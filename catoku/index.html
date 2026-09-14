@@ -75,7 +75,7 @@
     position: relative;
   }
   .cell:active { transform: scale(.92); }
-  .cell .mark { font-size: calc(var(--cell) * .34); opacity: .45; color: #7a6a72; }
+  .cell .mark { font-size: calc(var(--cell) * .34); opacity: .88; color: #332d31; }
   .cell .cat { animation: pop .28s cubic-bezier(.3,1.6,.5,1); }
   @keyframes pop { 0%{transform:scale(.2) rotate(-18deg);opacity:0;} 60%{transform:scale(1.18) rotate(6deg);} 100%{transform:scale(1) rotate(0);} }
   .cell.conflict { box-shadow: 0 0 0 3px #e5484d inset; }
@@ -336,8 +336,9 @@ function generatePuzzle(N, rng){
 /* ---------- config ---------- */
 const DEFAULT_N=7, MIN_N=4, MAX_N=12; // MAX_N=12 keeps generation snappy & fully logic-solvable; larger boards fall back / take seconds
 // one distinct pastel per region — need >= MAX_N so no two regions ever share a colour
-const PASTELS=["#f7a8a8","#f9c784","#f6e58d","#c9e6a0","#a8e6cf","#8fd3d9","#a8d0e6","#b8b8e6","#d6a8e6","#f0a8d0","#f4b8a0","#d9c3a0"];
-const CATS=["🐱","😺","😸","😹","😻","😼","😽","🐈"];
+// even 30° hue sweep, lightness zigzag — all pairs ΔE≥18 (distinct even when adjacent), mark ≥3.5:1
+const PASTELS=["#f8bfbf","#f0b275","#f8f8bf","#b2f075","#bff8bf","#75f0b2","#bff8f8","#75b2f0","#bfbff8","#b275f0","#f8bff8","#f075b2"];
+const CATS=["🐱","😺","😸","😹","😻","😼","😽"];
 const WINCATS=["😻","😸","😺","🐱","😹"];
 const WINPUNS=["Purrfect!","Meow-velous!","Paw-some!","Feline good!","Claw-some!","Purr-fectly played!","The cat's whiskers!","Hiss-toric win!","Totally paw-sitive!","You're kitten me!"];
 const STORE_KEY="catoku_v1";
