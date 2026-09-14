@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catoku 🐱</title>
+<style>
+  :root {
+    --bg: #fdf6f0;
+    --ink: #5b4a52;
+    --panel: #ffffff;
+    --accent: #f7a8c4;
+    --accent-2: #a8d0e6;
+    --shadow: 0 6px 20px rgba(120,90,110,.15);
+    --n: 5;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: linear-gradient(160deg,#fdf6f0,#f5eefb);
+    color: var(--ink);
+    font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    min-height: 100%;
+  }
+  body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
+  h1 {
+    font-size: 2.2rem; margin: 8px 0 2px; letter-spacing: 1px;
+    font-weight: 900; color: var(--ink);
+  }
+  .tag { font-size: .85rem; opacity: .7; margin-bottom: 14px; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; }
+  .tab {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 800;
+    padding: 9px 18px; border-radius: 999px; font-size: .95rem;
+    background: var(--panel); color: var(--ink); box-shadow: var(--shadow);
+    transition: transform .12s ease, background .2s;
+  }
+  .tab:hover { transform: translateY(-2px); }
+  .tab.active { background: var(--accent); color: #fff; }
+  .tab.done::after { content: " ✓"; color: #4caf50; font-weight: 900; }
+  .tab.active.done::after { color: #fff; }
+
+  .bar {
+    display: flex; align-items: center; gap: 14px; margin: 4px 0 14px;
+    font-weight: 800; font-size: 1.05rem;
+  }
+  .bar .clock { font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
+    background: var(--panel); padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(calc(var(--n) + 1), auto);
+    gap: 3px; background: #e8dced; padding: 6px; border-radius: 14px;
+    box-shadow: var(--shadow);
+    touch-action: manipulation;
+    --cell: clamp(20px, calc((94vw - 40px)/(var(--n) + 1)), 60px);
+  }
+  .hdr {
+    cursor: pointer; border: none; background: transparent; color: #c3b2bb;
+    font-family: inherit; font-weight: 900; font-size: calc(var(--cell) * .3);
+    display: flex; align-items: center; justify-content: center; padding: 0;
+    transition: color .15s, transform .1s;
+  }
+  .hdr:hover { color: var(--accent); }
+  .hdr:active { transform: scale(.85); }
+  .hdr.col { height: calc(var(--cell) * .6); }
+  .hdr.row { width: calc(var(--cell) * .6); }
+  .cell {
+    width: var(--cell); height: var(--cell);
+    border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--cell) * .62); line-height: 1; user-select: none;
+    transition: transform .1s ease, box-shadow .15s;
+    position: relative;
+  }
+  .cell:active { transform: scale(.92); }
+  .cell .mark { font-size: calc(var(--cell) * .34); opacity: .45; color: #7a6a72; }
+  .cell .cat { animation: pop .28s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { 0%{transform:scale(.2) rotate(-18deg);opacity:0;} 60%{transform:scale(1.18) rotate(6deg);} 100%{transform:scale(1) rotate(0);} }
+  .cell.conflict { box-shadow: 0 0 0 3px #e5484d inset; }
+
+  .controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 800; font-size: .9rem;
+    padding: 9px 16px; border-radius: 12px; background: var(--panel); color: var(--ink);
+    box-shadow: var(--shadow); transition: transform .12s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--accent-2); color: #fff; }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+
+  .hint { font-size: .8rem; opacity: .65; margin-top: 12px; text-align: center; max-width: 340px; }
+
+  /* Stats */
+  .stats { margin-top: 26px; width: 100%; max-width: 420px; background: var(--panel);
+    border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .stats h2 { margin: 0 0 10px; font-size: 1.1rem; }
+  .totals { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .totals .chip { background: #f6eef7; border-radius: 10px; padding: 6px 12px; font-size: .8rem; font-weight: 800; }
+  .totals .chip b { display:block; font-size: 1.2rem; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th, td { padding: 5px 4px; text-align: center; }
+  th { opacity: .6; font-weight: 800; }
+  td.d { text-align: left; opacity: .8; }
+  .ok { color: #4caf50; font-weight: 800; }
+  .no { opacity: .3; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(70,50,65,.4);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .card {
+    background: var(--panel); border-radius: 20px; padding: 26px; max-width: 360px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); text-align: center; animation: pop .3s ease;
+  }
+  .card h2 { margin: 6px 0 10px; }
+  .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
+    animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
+</style>
+</head>
+<body>
+  <h1>Catoku 🐱</h1>
+  <div class="tag" id="dateTag"></div>
+
+  <div class="bar">
+    <div>😺 <span id="catCount">0</span>/<span id="catTotal">0</span></div>
+    <div class="clock" id="clock">0:00</div>
+  </div>
+
+  <div id="board"></div>
+
+  <div class="controls">
+    <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
+      <input id="sizeInput" type="number" min="4" max="12" value="7"
+        style="width:3em;border:none;background:#f6eef7;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
+    </label>
+    <button class="btn primary" id="newBtn">🎲 New</button>
+    <button class="btn" id="undoBtn">↶ Undo</button>
+    <button class="btn" id="resetBtn">↺ Reset</button>
+    <button class="btn" id="rulesBtn">?</button>
+  </div>
+  <div class="hint">Tap a cell: X (note) → 🐱 (cat) → empty. Tap a ✕ edge button to X-out a whole row or column.</div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="overlay" id="rulesOverlay">
+    <div class="card">
+      <h2>How to play 🐾</h2>
+      <p>Place one <b>cat 🐱</b> in every <b>row</b>, every <b>column</b>, and every <b>color group</b>.</p>
+      <p>Cats are shy — no two cats may touch, not even diagonally.</p>
+      <p>Tap a cell to place an <b>X</b> note, tap again for a <b>cat</b>, again to clear.</p>
+      <p>Tap the <b>✕</b> buttons along the edges to X-out every empty tile in a whole row or column at once (tap again to clear those notes).</p>
+      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOverlay">
+    <div class="card">
+      <div style="font-size:3rem" id="winCat">😻</div>
+      <h2 id="winTitle">Purrfect!</h2>
+      <p style="text-align:center" id="winMsg"></p>
+      <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+/* ---------- deterministic daily RNG ---------- */
+function xmur3(str){ let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19); }
+  return function(){ h=Math.imul(h^(h>>>16),2246822507); h=Math.imul(h^(h>>>13),3266489909); return (h^=h>>>16)>>>0; }; }
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function makeRng(seed){ const s=xmur3(seed); return mulberry32(s()); }
+
+/* ---------- puzzle generation (Queens-style) ---------- */
+// placement[row] = col ; permutation with |c[i]-c[i+1]| >= 2 (no adjacency incl. diagonal)
+function genPlacement(N, rng){
+  const res=[];
+  function bt(row, prev){
+    if(row===N) return true;
+    const cand=[];
+    for(let c=0;c<N;c++) if(!res.includes(c) && (row===0 || Math.abs(c-prev)>=2)) cand.push(c);
+    for(let i=cand.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [cand[i],cand[j]]=[cand[j],cand[i]]; }
+    for(const c of cand){ res.push(c); if(bt(row+1,c)) return true; res.pop(); }
+    return false;
+  }
+  return bt(0,-99) ? res : null;
+}
+
+// grow N connected color regions from each cat seed until grid is full
+function genColoring(N, placement, rng){
+  const color=Array.from({length:N},()=>Array(N).fill(-1));
+  const front=Array.from({length:N},()=>[]);
+  const seen=Array.from({length:N},()=>new Set());
+  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  function addNb(reg,r,c){ for(const [dr,dc] of dirs){ const nr=r+dr,nc=c+dc;
+    if(nr<0||nc<0||nr>=N||nc>=N||color[nr][nc]!==-1) continue;
+    const k=nr*N+nc; if(!seen[reg].has(k)){ seen[reg].add(k); front[reg].push([nr,nc]); } } }
+  for(let r=0;r<N;r++){ const c=placement[r]; color[r][c]=r; addNb(r,r,c); }
+  let remaining=N*N-N;
+  while(remaining>0){
+    const active=[]; for(let i=0;i<N;i++) if(front[i].length) active.push(i);
+    if(!active.length) break;
+    const reg=active[Math.floor(rng()*active.length)];
+    let cell=null;
+    while(front[reg].length){
+      const idx=Math.floor(rng()*front[reg].length);
+      const cur=front[reg][idx];
+      front[reg][idx]=front[reg][front[reg].length-1]; front[reg].pop();
+      if(color[cur[0]][cur[1]]===-1){ cell=cur; break; }
+    }
+    if(!cell) continue;
+    color[cell[0]][cell[1]]=reg; remaining--; addNb(reg,cell[0],cell[1]);
+  }
+  return color;
+}
+
+// human-style deductive solver: solves using only inference, never guessing.
+// returns {placed, placement}; placed===N means fully deducible (unique, no
+// trial-and-error). `placed` (how far pure deduction gets) also scores colorings
+// during carving. A contradiction (a unit with no candidates) stops deduction.
+function logicalSolve(N, color){
+  const cand=Array.from({length:N},()=>Array(N).fill(true));
+  const cat=Array.from({length:N},()=>Array(N).fill(false));
+  const rowDone=Array(N).fill(false), colDone=Array(N).fill(false), regDone=Array(N).fill(false);
+  let placed=0, progress=true, dead=false;
+  const rowCells=r=>{ const a=[]; for(let c=0;c<N;c++) if(cand[r][c]) a.push([r,c]); return a; };
+  const colCells=c=>{ const a=[]; for(let r=0;r<N;r++) if(cand[r][c]) a.push([r,c]); return a; };
+  const regCells=g=>{ const a=[]; for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(color[r][c]===g&&cand[r][c]) a.push([r,c]); return a; };
+  function elim(r,c){ if(cand[r][c]){ cand[r][c]=false; progress=true; } }
+  function place(r,c){
+    cat[r][c]=true; placed++; const g=color[r][c];
+    rowDone[r]=colDone[c]=regDone[g]=true; progress=true;
+    for(let i=0;i<N;i++){ cand[r][i]=false; cand[i][c]=false; }
+    for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g) cand[rr][cc]=false;
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ const nr=r+dr,nc=c+dc; if(nr>=0&&nc>=0&&nr<N&&nc<N) cand[nr][nc]=false; }
+  }
+  while(progress && placed<N && !dead){
+    progress=false;
+    // forced single: a row/col/region with exactly one remaining candidate must hold the cat
+    for(let r=0;r<N;r++) if(!rowDone[r]){ const cells=rowCells(r); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1]); }
+    for(let c=0;c<N&&!dead;c++) if(!colDone[c]){ const cells=colCells(c); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1]); }
+    for(let g=0;g<N&&!dead;g++) if(!regDone[g]){ const cells=regCells(g); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1]); }
+    if(dead) break;
+    // locked candidates: a region confined to one row/col claims it (and vice-versa)
+    for(let g=0;g<N;g++) if(!regDone[g]){ const cells=regCells(g);
+      if(cells.length && cells.every(x=>x[0]===cells[0][0])){ const r=cells[0][0]; for(let c=0;c<N;c++) if(color[r][c]!==g) elim(r,c); }
+      if(cells.length && cells.every(x=>x[1]===cells[0][1])){ const c=cells[0][1]; for(let r=0;r<N;r++) if(color[r][c]!==g) elim(r,c); } }
+    for(let r=0;r<N;r++) if(!rowDone[r]){ const cells=rowCells(r);
+      if(cells.length && cells.every(x=>color[x[0]][x[1]]===color[cells[0][0]][cells[0][1]])){ const g=color[cells[0][0]][cells[0][1]]; for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g&&rr!==r) elim(rr,cc); } }
+    for(let c=0;c<N;c++) if(!colDone[c]){ const cells=colCells(c);
+      if(cells.length && cells.every(x=>color[x[0]][x[1]]===color[cells[0][0]][cells[0][1]])){ const g=color[cells[0][0]][cells[0][1]]; for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g&&cc!==c) elim(rr,cc); } }
+  }
+  const out=Array(N); for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(cat[r][c]) out[r]=c;
+  return { placed, placement:out };
+}
+
+// is color region g a single connected blob? (carving must not split a region)
+function regionConnected(N, color, g){
+  let start=null, total=0;
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(color[r][c]===g){ total++; if(!start) start=[r,c]; }
+  if(!start) return false;
+  const seen=new Set([start[0]*N+start[1]]), st=[start]; let n=0;
+  while(st.length){ const [a,b]=st.pop(); n++;
+    for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){ const na=a+dr,nb=b+dc;
+      if(na<0||nb<0||na>=N||nb>=N||color[na][nb]!==g||seen.has(na*N+nb)) continue;
+      seen.add(na*N+nb); st.push([na,nb]); } }
+  return n===total;
+}
+
+// solver-guided carving: reshape regions (flip a border cell into a neighbour
+// region) hill-climbing on how far pure deduction gets. Random flood colorings
+// are ~never deducible at N>=7; this reliably reaches a fully-deducible board.
+function carveColoring(N, placement, rng, maxIter){
+  const qset=new Set(placement.map((c,r)=>r*N+c)); // queen cells: never reassign (each region keeps its cat)
+  let color=genColoring(N,placement,rng);
+  let score=logicalSolve(N,color).placed;
+  for(let it=0; it<maxIter && score<N; it++){
+    const r=Math.floor(rng()*N), c=Math.floor(rng()*N);
+    if(qset.has(r*N+c)) continue;
+    const g=color[r][c], nbs=[];
+    for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nc>=0&&nr<N&&nc<N&&color[nr][nc]!==g) nbs.push(color[nr][nc]); }
+    if(!nbs.length) continue;
+    const ng=nbs[Math.floor(rng()*nbs.length)];
+    color[r][c]=ng;
+    if(!regionConnected(N,color,g)){ color[r][c]=g; continue; } // don't split the donor region
+    const ns=logicalSolve(N,color).placed;
+    if(ns>=score) score=ns; else color[r][c]=g; // accept equal moves to wander off plateaus
+  }
+  return { color, score };
+}
+
+// count solutions (capped) given color regions + rules
+function countSolutions(N, color, limit){
+  let count=0; const usedCol=new Set(), usedColor=new Set();
+  function bt(row, prev){
+    if(count>=limit) return;
+    if(row===N){ count++; return; }
+    for(let c=0;c<N;c++){
+      if(usedCol.has(c)) continue;
+      if(row>0 && Math.abs(c-prev)<2) continue;
+      const col=color[row][c];
+      if(usedColor.has(col)) continue;
+      usedCol.add(c); usedColor.add(col);
+      bt(row+1,c);
+      usedCol.delete(c); usedColor.delete(col);
+    }
+  }
+  bt(0,-99); return count;
+}
+
+// carve a fully-deducible board: those are unique AND solvable by pure inference
+// (a definite first move, no trial-and-error). Retry with fresh placements; keep
+// the most-deducible board as a fallback if none reaches full deduction.
+function generatePuzzle(N, rng){
+  const retries=N<=9?12:20, mult=N<=9?40:80; // bigger boards need more carving to reach full deduction
+  let best=null, bestScore=-1;
+  for(let a=0;a<retries;a++){
+    const placement=genPlacement(N,rng);
+    if(!placement) continue;
+    const {color,score}=carveColoring(N,placement,rng,N*N*mult);
+    if(score===N) return {N,color,placement}; // fully deducible
+    if(score>bestScore){ bestScore=score; best={N,color,placement}; }
+  }
+  return best;
+}
+
+/* ---------- config ---------- */
+const DEFAULT_N=7, MIN_N=4, MAX_N=12; // MAX_N=12 keeps generation snappy & fully logic-solvable; larger boards fall back / take seconds
+// one distinct pastel per region — need >= MAX_N so no two regions ever share a colour
+const PASTELS=["#f7a8a8","#f9c784","#f6e58d","#c9e6a0","#a8e6cf","#8fd3d9","#a8d0e6","#b8b8e6","#d6a8e6","#f0a8d0","#f4b8a0","#d9c3a0"];
+const CATS=["🐱","😺","😸","😹","😻","😼","😽","🐈"];
+const WINCATS=["😻","😸","😺","🐱","😹"];
+const WINPUNS=["Purrfect!","Meow-velous!","Paw-some!","Feline good!","Claw-some!","Purr-fectly played!","The cat's whiskers!","Hiss-toric win!","Totally paw-sitive!","You're kitten me!"];
+const STORE_KEY="catoku_v1";
+
+/* ---------- date ---------- */
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+/* ---------- storage ---------- */
+// { best:{ N: seconds }, solved: count }  — best time per board size + total solved
+function loadStore(){ try{ const s=JSON.parse(localStorage.getItem(STORE_KEY)); return (s&&s.best)?s:{best:{},solved:0}; }catch(e){ return {best:{},solved:0}; } }
+function saveStore(s){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(s)); }catch(e){} }
+function recordWin(N,time){
+  const s=loadStore(); s.solved=(s.solved||0)+1;
+  if(s.best[N]===undefined||time<s.best[N]) s.best[N]=time;
+  saveStore(s);
+}
+
+/* ---------- state ---------- */
+const puzzleCache={}; // key = seed string
+let seedCounter=0;
+const state={ N:DEFAULT_N, seed:null, puz:null, grid:null, emoji:null,
+  started:false, elapsed:0, timerId:null, won:false, undo:[] };
+
+function puzzleFor(N,seed){
+  if(!puzzleCache[seed]) puzzleCache[seed]=generatePuzzle(N, makeRng(seed));
+  return puzzleCache[seed];
+}
+
+/* ---------- render ---------- */
+const boardEl=document.getElementById("board");
+function loadGame(N,seed){
+  stopTimer();
+  state.N=N; state.seed=seed; state.puz=puzzleFor(N,seed);
+  N=state.puz.N;
+  state.grid=Array.from({length:N},()=>Array(N).fill(0)); // 0 empty,1 mark,2 cat
+  state.emoji=Array.from({length:N},()=>Array(N).fill(null));
+  state.started=false; state.elapsed=0; state.won=false; state.undo=[];
+  document.getElementById("clock").textContent="0:00";
+  renderBoard(); updateCount(); updateUndo();
+}
+function hdrBtn(kind,i){ // edge button that X-outs a whole row (kind='row') or column (kind='col')
+  const b=document.createElement("button");
+  b.className="hdr "+kind; b.textContent="✕"; b.title="X-out this "+kind;
+  b.onclick=()=>{ const N=state.puz.N, cells=[];
+    for(let j=0;j<N;j++) cells.push(kind==="row"?[i,j]:[j,i]);
+    fillLine(cells); };
+  return b;
+}
+function renderBoard(){
+  const {N,color}=state.puz;
+  boardEl.style.setProperty("--n",N);
+  document.querySelector(":root").style.setProperty("--n",N);
+  boardEl.innerHTML="";
+  const corner=document.createElement("div"); corner.className="hdr corner"; boardEl.appendChild(corner);
+  for(let c=0;c<N;c++) boardEl.appendChild(hdrBtn("col",c));
+  for(let r=0;r<N;r++){
+    boardEl.appendChild(hdrBtn("row",r));
+    for(let c=0;c<N;c++){
+      const cell=document.createElement("div");
+      cell.className="cell";
+      cell.style.background=PASTELS[color[r][c]%PASTELS.length];
+      cell.dataset.r=r; cell.dataset.c=c;
+      cell.onclick=()=>onCell(r,c);
+      boardEl.appendChild(cell);
+    }
+  }
+  paint();
+}
+function paint(){
+  const {N}=state.puz;
+  const conf=conflicts();
+  boardEl.querySelectorAll(".cell").forEach(cell=>{
+    const r=+cell.dataset.r, c=+cell.dataset.c, v=state.grid[r][c];
+    cell.classList.toggle("conflict", conf.has(r*N+c));
+    if(v===2) cell.innerHTML='<span class="cat">'+state.emoji[r][c]+'</span>';
+    else if(v===1) cell.innerHTML='<span class="mark">✕</span>';
+    else cell.innerHTML="";
+  });
+}
+function updateCount(){
+  let n=0; const N=state.puz.N;
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(state.grid[r][c]===2) n++;
+  document.getElementById("catCount").textContent=n;
+  document.getElementById("catTotal").textContent=N;
+}
+
+/* ---------- interaction ---------- */
+function onCell(r,c){
+  if(state.won) return;
+  if(!state.started) startTimer();
+  pushUndo();
+  const v=state.grid[r][c];
+  if(v===0) state.grid[r][c]=1;
+  else if(v===1){ state.grid[r][c]=2; state.emoji[r][c]=CATS[Math.floor(Math.random()*CATS.length)]; }
+  else state.grid[r][c]=0;
+  paint(); updateCount(); updateUndo(); checkWin();
+}
+
+// undo stack: one snapshot per user action (a whole-line fill is one action). Keep the last 10.
+function pushUndo(){
+  state.undo.push({grid:state.grid.map(row=>row.slice()), emoji:state.emoji.map(row=>row.slice())});
+  if(state.undo.length>10) state.undo.shift();
+}
+function undo(){
+  if(state.won || !state.undo.length) return;
+  const s=state.undo.pop();
+  state.grid=s.grid; state.emoji=s.emoji;
+  paint(); updateCount(); updateUndo();
+}
+function updateUndo(){ document.getElementById("undoBtn").disabled=!state.undo.length; }
+
+// X-out every empty tile in a line; if none are empty, toggle its X notes back off (cats untouched)
+function fillLine(cells){
+  if(state.won) return;
+  if(!state.started) startTimer();
+  pushUndo();
+  const empties=cells.filter(([r,c])=>state.grid[r][c]===0);
+  if(empties.length) for(const [r,c] of empties) state.grid[r][c]=1;
+  else for(const [r,c] of cells) if(state.grid[r][c]===1) state.grid[r][c]=0;
+  paint(); updateCount(); updateUndo(); checkWin();
+}
+
+// cats that violate any rule (row/col/color dup, or touching another cat)
+function conflicts(){
+  const {N,color}=state.puz, g=state.grid;
+  const cats=[]; for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(g[r][c]===2) cats.push([r,c]);
+  const rowc={},colc={},colorc={}; const bad=new Set();
+  for(const [r,c] of cats){ rowc[r]=(rowc[r]||0)+1; colc[c]=(colc[c]||0)+1; const k=color[r][c]; colorc[k]=(colorc[k]||0)+1; }
+  for(const [r,c] of cats){
+    let b=false;
+    if(rowc[r]>1||colc[c]>1||colorc[color[r][c]]>1) b=true;
+    for(let dr=-1;dr<=1&&!b;dr++) for(let dc=-1;dc<=1;dc++){
+      if(!dr&&!dc) continue; const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nc>=0&&nr<N&&nc<N&&g[nr][nc]===2){ b=true; break; }
+    }
+    if(b) bad.add(r*N+c);
+  }
+  return bad;
+}
+function checkWin(){
+  const N=state.puz.N; let n=0;
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(state.grid[r][c]===2) n++;
+  if(n===N && conflicts().size===0){ win(); }
+}
+function win(){
+  const N=state.puz.N;
+  state.won=true; stopTimer();
+  recordWin(N,state.elapsed);
+  renderStats();
+  document.getElementById("winCat").textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
+  document.getElementById("winTitle").textContent=WINPUNS[Math.floor(Math.random()*WINPUNS.length)];
+  document.getElementById("winMsg").textContent="You solved a "+N+"×"+N+" board in "+fmt(state.elapsed)+".";
+  document.getElementById("winOverlay").classList.add("show");
+  confetti();
+}
+function confetti(){
+  for(let i=0;i<24;i++){
+    const s=document.createElement("div");
+    s.className="confetti"; s.textContent=CATS[Math.floor(Math.random()*CATS.length)];
+    s.style.left=Math.random()*100+"vw";
+    s.style.animationDuration=(1.6+Math.random()*1.8)+"s";
+    s.style.animationDelay=(Math.random()*.5)+"s";
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),4000);
+  }
+}
+
+/* ---------- timer ---------- */
+function fmt(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function startTimer(){ state.started=true; state.timerId=setInterval(()=>{ state.elapsed++;
+  document.getElementById("clock").textContent=fmt(state.elapsed); },1000); }
+function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
+
+/* ---------- stats ---------- */
+function renderStats(){
+  const s=loadStore(); const el=document.getElementById("stats");
+  const sizes=Object.keys(s.best).map(Number).sort((a,b)=>a-b);
+  let html='<h2>Your stats 🏆</h2><div class="totals">'+
+    '<div class="chip">Solved<b>'+(s.solved||0)+'</b></div>';
+  html+='</div>';
+  if(sizes.length){
+    html+='<table><tr><th class="d">Board</th><th>Best time</th></tr>';
+    for(const N of sizes) html+='<tr><td class="d">'+N+'×'+N+'</td><td class="ok">'+fmt(s.best[N])+'</td></tr>';
+    html+='</table>';
+  } else html+='<p style="opacity:.6">No games solved yet — solve one to start your record!</p>';
+  el.innerHTML=html;
+}
+
+/* ---------- wire up ---------- */
+const sizeInput=document.getElementById("sizeInput");
+function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
+function newGame(){ const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+document.getElementById("dateTag").textContent="Fresh cat puzzles, any size 4–"+MAX_N;
+document.getElementById("newBtn").onclick=newGame;
+document.getElementById("undoBtn").onclick=undo;
+document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
+document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
+document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+loadGame(DEFAULT_N, todayStr()+"|"+DEFAULT_N); // daily default board
+renderStats();
+
+/* ---------- self-check (console) ---------- */
+function runSelfTest(){
+  let ok=true;
+  for(const N of [MIN_N,5,DEFAULT_N,9,MAX_N]){
+    const diff=N+"×"+N;
+    const p=generatePuzzle(N, makeRng("test|"+N));
+    // known solution must satisfy: distinct cols, consecutive diff>=2, all colors distinct
+    const seenCol=new Set(), seenColor=new Set();
+    for(let r=0;r<p.N;r++){ const c=p.placement[r];
+      if(seenCol.has(c)){ ok=false; }
+      if(r>0 && Math.abs(c-p.placement[r-1])<2){ ok=false; }
+      const col=p.color[r][c]; if(seenColor.has(col)){ ok=false; } seenColor.add(col); seenCol.add(c);
+    }
+    if(countSolutions(p.N,p.color,3)<1){ ok=false; }
+    // when fully deducible, the deduced solution must match the generator's
+    const {placed,placement:sol}=logicalSolve(p.N,p.color);
+    const solved=placed===p.N;
+    if(solved && sol.join(",")!==p.placement.join(",")){ ok=false; }
+    console.log("  "+diff+": "+(solved?"logically solvable ✅":"fell back at "+placed+"/"+p.N+" ⚠️"));
+    console.assert(ok, "Catoku self-test failed for "+diff);
+  }
+  console.log(ok?"Catoku self-test passed ✅":"Catoku self-test FAILED ❌");
+  return ok;
+}
+if(location.hostname==="localhost"||location.hash==="#selftest") runSelfTest();
+</script>
+</body>
+</html>

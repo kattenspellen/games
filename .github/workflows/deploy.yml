@@ -1,0 +1,26 @@
+name: Deploy to GitHub Pages
+on:
+  release:
+    types: [published]     # fires when a release (tag) is published
+  workflow_dispatch:        # manual trigger (first deploy / redeploy)
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .          # whole repo root = the site (static, no build)
+      - id: deployment
+        uses: actions/deploy-pages@v4
