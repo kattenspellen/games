@@ -1,75 +1,87 @@
 # Catoku
 
-A "Queens"-style logic puzzle with cats. Place one cat 🐱 per row, per
-column, and per color region; no two cats may touch (including diagonally).
-Puzzles are deterministic per seed and generated to be **solvable by
-pure deduction** — no guessing. On load you get a daily 7×7 board; "New game"
-rerolls at any size 4–12 (`MIN_N`/`MAX_N`).
+A "Queens"-style logic puzzle with cats: place one cat per row, per column, and
+per color region; no two cats touch (including diagonally). Puzzles are
+deterministic per seed and solvable by pure deduction — no guessing.
+
+The whole game is one file: `catoku/index.html` (`<style>`, HTML, one
+`<script>`). No framework, dependencies, or build step. It runs client-side.
+The only persistence is `localStorage` key `catoku_v1` (best win time per board
+size + solved count — never the puzzle).
 
 ## Architecture
 
-The game is one self-contained file: **`catoku/index.html`** (`<style>`, HTML, and
-a single `<script>`). No framework, no dependencies, no build step, no bundler.
-Runs entirely client-side. Only persistence is `localStorage` key `catoku_v1`,
-which stores the best win time per board size + a solved count — never the
-puzzle itself.
+The `<script>` runs top-to-bottom in commented sections: deterministic RNG →
+puzzle generation → config → date → storage → state → render → interaction →
+timer → stats → wire-up → console self-test.
 
-The repo is a **hub**: root `index.html` is a static landing page linking to
-each game; `catoku/index.html` is the game. Deployed to GitHub Pages by
-`.github/workflows/deploy.yml` (uploads the repo root as-is) when a release is
-published — so `kattenspellen.github.io/games/` is the landing and
-`.../games/catoku/` is the game.
-
-The `<script>` is organized top-to-bottom into commented sections:
-deterministic RNG → puzzle generation → config → date → storage → state →
-render → interaction → timer → stats → wire-up → console self-test.
-
-### Key concepts
-- **Deterministic puzzles.** Seeded via `makeRng` (`xmur3` + `mulberry32`).
-  The default board uses seed `"YYYY-MM-DD|7"` (same daily 7×7 for everyone);
-  "New game" uses a fresh `"rnd|N|counter|Date.now()"` seed. Puzzles are memoized
-  in the in-memory `puzzleCache` (keyed by seed) and rebuilt on every page load.
-  `MAX_N=12` — larger boards fall back (not fully deducible) and take seconds.
+- **Deterministic puzzles.** Seed with `makeRng` (`xmur3` + `mulberry32`). The
+  daily board uses seed `"YYYY-MM-DD|7"`; "New game" uses a fresh
+  `"rnd|N|counter|Date.now()"` seed. Puzzles are memoized in `puzzleCache` and
+  rebuilt on every page load.
 - **Generation** (`generatePuzzle`): pick a solution (`genPlacement`), then
-  `carveColoring` reshapes color regions — hill-climbing on how far the
-  deductive solver gets — until the board is fully deducible. Random colorings
-  are ~never logic-solvable at N≥7, so carving is the mechanism, not filtering.
+  `carveColoring` reshapes color regions, hill-climbing on how far the deductive
+  solver gets, until the board is fully deducible.
 - **Deductive solver** (`logicalSolve`): human-style inference only (forced
   singles per row/col/region + locked-candidate confinement), no backtracking.
-  Returns `{placed, placement}`; `placed===N` means fully deducible (⟹ unique).
-- **Board size is the difficulty**: user-selectable 4–12, default 7
-  (`DEFAULT_N`). `generatePuzzle` scales its carving budget for N>9.
+  Returns `{placed, placement}`; `placed===N` means fully deducible.
+- **Board size is the difficulty**: 4–12, default 7 (`DEFAULT_N`). `MAX_N=12`;
+  larger boards fall back and take seconds.
 
-### The constraint model is duplicated — keep it in sync
-The rules (distinct row/col/color + no 8-directional adjacency) are encoded in
-**four** places: `genPlacement`, `logicalSolve`, `countSolutions`, and
-`conflicts`. Any rule change must touch all four or they'll disagree.
+## Rules
+
+Keep in sync: the constraints (distinct row/col/color + no 8-directional
+adjacency) are encoded in four places — `genPlacement`, `logicalSolve`,
+`countSolutions`, and `conflicts`. Change a rule in all four or they disagree.
+
+## Visual style
+
+Shared look across Kattenspellen games. Keep new games consistent with this.
+
+- **Mood**: soft, playful, pastel. Cats and emoji, never harsh.
+- **Font**: `"Nunito","Segoe UI",system-ui,-apple-system,sans-serif`.
+- **Background**: cream-to-lilac gradient, `linear-gradient(160deg,#fdf6f0,#f5eefb)`.
+- **Palette**:
+  - `--ink: #5b4a52` — text (soft mauve, not black).
+  - `--panel: #ffffff` — cards.
+  - `--accent: #f7a8c4` — pink, for headings/highlights.
+  - `--accent-2: #a8d0e6` — blue, for primary buttons.
+- **Shape**: generous rounding (cards ~20px, buttons/cells ~8–12px) and soft
+  shadows, `0 6px 20px rgba(120,90,110,.15)`.
+- **Motion**: small, springy. Hover lifts (`translateY(-2px…-4px)`), press
+  scales down, wins pop.
+- **Game regions**: a 12-color pastel palette — even 30° hue sweep with a
+  lightness zigzag so all pairs stay distinct (ΔE ≥ 18) even when touching.
+  Any glyph drawn on a region (e.g. the ✕ mark) must clear 3:1 contrast against
+  every region color.
 
 ## Code style
 
 - Vanilla ES, `"use strict"`, 2-space indent, semicolons.
-- Terse and compact: multiple statements per line are normal
-  (`for(...){ ... }` on one line), short helper names, arrow helpers inline.
+- Terse and compact: multiple statements per line are fine, short helper names,
+  inline arrow helpers. Match the surrounding density.
 - Section headers use `/* ---------- name ---------- */`.
-- Match the surrounding density — don't expand compact code into verbose blocks.
-- Determinism matters: never call `Math.random()`/`Date.now()` inside puzzle
-  generation — thread the seeded `rng` through instead. (`Math.random()` is fine
-  for cosmetic-only choices like which cat emoji renders.)
+- Never call `Math.random()` or `Date.now()` inside puzzle generation — thread
+  the seeded `rng` through instead. `Math.random()` is fine for cosmetic-only
+  choices (e.g. which cat emoji renders).
 
-## Build
+## Build, test, run
 
-None. It's a static file — open or serve `catoku/index.html` directly.
+No build — open or serve `catoku/index.html`.
 
-## Testing
+Run a static server, then hard-refresh (Ctrl+F5) to pick up changes:
 
-`runSelfTest()` logs to the browser console: it regenerates a spread of board
-sizes (`4,5,7,9,12`), asserts the solution satisfies all constraints, and
-reports whether each is fully logic-solvable. It's gated to dev only — it runs
-on `localhost` or when the URL ends in `#selftest`, so Pages visitors don't pay
-the ~1s regen.
+```bash
+python -m http.server 80    # http://localhost/
+```
 
-Headless check (no browser) — extract and run the script under Node with a
-stubbed DOM:
+`runSelfTest()` logs to the browser console on `localhost` or when the URL ends
+in `#selftest`: it regenerates sizes `4,5,7,9,12`, asserts constraints, and
+reports solvability. Every size should print "logically solvable ✅"; "fell
+back at k/N" means the carver missed full deduction (raise the retry count or
+`maxIter` in `generatePuzzle`).
+
+Headless check (Node with a stubbed DOM):
 
 ```bash
 node -e '
@@ -82,22 +94,8 @@ const box={console,Math,Date,JSON,Array,Set,String,Object,window:dummy,document:
 vm.createContext(box); vm.runInContext(js, box, {filename:"catoku.js"});'
 ```
 
-Expect every tested size to print "logically solvable ✅". If a board
-prints "fell back at k/N", the carver didn't reach full deduction within budget
-— raise the retry count or `maxIter` in `generatePuzzle`, or strengthen
-`logicalSolve` with an extra technique.
+## Deploy
 
-## Local development
-
-It's a static file; any static server works.
-
-```bash
-python -m http.server 80    # then http://desktop-tome18.local/  (mDNS) or http://localhost/
-```
-
-- Puzzles regenerate on every page load, so a browser refresh picks up code
-  changes. Hard-refresh (Ctrl+F5) to defeat HTTP caching of `catoku/index.html`.
-- Serving on `0.0.0.0` (the default) makes it reachable on the LAN via the
-  machine's `<hostname>.local` (Windows 11 answers mDNS for its own hostname).
-  First external connection may trigger a Windows Firewall prompt — allow on
-  private networks.
+`.github/workflows/deploy.yml` uploads the repo root to GitHub Pages when a
+release is published: `kattenspellen.github.io/games/` is the landing,
+`.../games/catoku/` is the game.
