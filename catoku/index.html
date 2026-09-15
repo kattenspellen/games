@@ -14,7 +14,7 @@
     --ink: #5b4a52;
     --panel: #ffffff;
     --accent: #f7a8c4;
-    --accent-2: #a8d0e6;
+    --accent-2: #3f8fd6;
     --shadow: 0 6px 20px rgba(120,90,110,.15);
     --n: 5;
   }
@@ -99,10 +99,10 @@
   /* Stats */
   .stats { margin-top: 26px; width: 100%; max-width: 420px; background: var(--panel);
     border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
-  .stats h2 { margin: 0 0 10px; font-size: 1.1rem; }
-  .totals { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-  .totals .chip { background: #f6eef7; border-radius: 10px; padding: 6px 12px; font-size: .8rem; font-weight: 800; }
-  .totals .chip b { display:block; font-size: 1.2rem; color: var(--accent); }
+  .stats .statshead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .stats .statshead h2 { margin: 0; font-size: 1.1rem; }
+  .stats .chip { background: #f6eef7; border-radius: 10px; padding: 6px 12px; font-size: .85rem; font-weight: 800; }
+  .stats .chip b { color: var(--accent); }
   table { width: 100%; border-collapse: collapse; font-size: .82rem; }
   th, td { padding: 5px 4px; text-align: center; }
   th { opacity: .6; font-weight: 800; }
@@ -148,16 +148,14 @@
     <button class="btn" id="resetBtn">↺ Reset</button>
     <button class="btn" id="rulesBtn">?</button>
   </div>
-  <div class="hint">Tap a cell: X (note) → 🐱 (cat) → empty. Tap a ✕ edge button to X-out a whole row or column.</div>
-
   <div class="stats" id="stats"></div>
 
   <div class="overlay" id="rulesOverlay">
     <div class="card">
-      <h2>How to play 🐾</h2>
+      <h2>How to play</h2>
       <p>Place one <b>cat 🐱</b> in every <b>row</b>, every <b>column</b>, and every <b>color group</b>.</p>
       <p>Cats are shy — no two cats may touch, not even diagonally.</p>
-      <p>Tap a cell to place an <b>X</b> note, tap again for a <b>cat</b>, again to clear.</p>
+      <p>Tap a cell to place an <b>✕</b> note, tap again for a <b>cat</b>, again to clear.</p>
       <p>Tap the <b>✕</b> buttons along the edges to X-out every empty tile in a whole row or column at once (tap again to clear those notes).</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
     </div>
@@ -520,9 +518,8 @@ function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.tim
 function renderStats(){
   const s=loadStore(); const el=document.getElementById("stats");
   const sizes=Object.keys(s.best).map(Number).sort((a,b)=>a-b);
-  let html='<h2>Your stats 🏆</h2><div class="totals">'+
-    '<div class="chip">Solved<b>'+(s.solved||0)+'</b></div>';
-  html+='</div>';
+  let html='<div class="statshead"><h2>Your stats</h2>'+
+    '<div class="chip">Solved <b>'+(s.solved||0)+'</b></div></div>';
   if(sizes.length){
     html+='<table><tr><th class="d">Board</th><th>Best time</th></tr>';
     for(const N of sizes) html+='<tr><td class="d">'+N+'×'+N+'</td><td class="ok">'+fmt(s.best[N])+'</td></tr>';
