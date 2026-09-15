@@ -45,7 +45,7 @@ Shared look across Kattenspellen games. Keep new games consistent with this.
   - `--ink: #5b4a52` — text (soft mauve, not black).
   - `--panel: #ffffff` — cards.
   - `--accent: #f7a8c4` — pink, for headings/highlights.
-  - `--accent-2: #a8d0e6` — blue, for primary buttons.
+  - `--accent-2: #3f8fd6` — blue, for primary buttons.
 - **Shape**: generous rounding (cards ~20px, buttons/cells ~8–12px) and soft
   shadows, `0 6px 20px rgba(120,90,110,.15)`.
 - **Motion**: small, springy. Hover lifts (`translateY(-2px…-4px)`), press

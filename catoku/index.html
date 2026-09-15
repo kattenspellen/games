@@ -3,14 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Catoku 🐱</title>
+<title>Catoku — a &quot;Queens&quot;-style cat logic puzzle</title>
+<meta name="description" content="Catoku is a free daily logic puzzle: place one cat per row, column, and color region so no two touch. Deterministic and solvable by pure deduction. No ads, no telemetry.">
+<link rel="canonical" href="https://kattenspellen.github.io/games/catoku/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Catoku — a &quot;Queens&quot;-style cat logic puzzle">
+<meta property="og:description" content="A free daily logic puzzle with cats. One cat per row, column, and color region; no two touch. No ads, no telemetry.">
+<meta property="og:url" content="https://kattenspellen.github.io/games/catoku/">
+<meta property="og:image" content="https://kattenspellen.github.io/games/assets/catoku-preview.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐱</text></svg>">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#f7a8c4">
+<link rel="manifest" href="manifest.webmanifest">
 <style>
   :root {
     --bg: #fdf6f0;
     --ink: #5b4a52;
     --panel: #ffffff;
     --accent: #f7a8c4;
-    --accent-2: #a8d0e6;
+    --accent-2: #3f8fd6;
     --shadow: 0 6px 20px rgba(120,90,110,.15);
     --n: 5;
   }
@@ -58,7 +69,7 @@
   }
   .hdr {
     cursor: pointer; border: none; background: transparent; color: #c3b2bb;
-    font-family: inherit; font-weight: 900; font-size: calc(var(--cell) * .3);
+    font-family: inherit; font-weight: 900; font-size: calc(var(--cell) * .5);
     display: flex; align-items: center; justify-content: center; padding: 0;
     transition: color .15s, transform .1s;
   }
@@ -75,7 +86,7 @@
     position: relative;
   }
   .cell:active { transform: scale(.92); }
-  .cell .mark { font-size: calc(var(--cell) * .34); opacity: .88; color: #332d31; }
+  .cell .mark { font-size: calc(var(--cell) * .5); font-weight: 900; opacity: .88; color: #332d31; }
   .cell .cat { animation: pop .28s cubic-bezier(.3,1.6,.5,1); }
   @keyframes pop { 0%{transform:scale(.2) rotate(-18deg);opacity:0;} 60%{transform:scale(1.18) rotate(6deg);} 100%{transform:scale(1) rotate(0);} }
   .cell.conflict { box-shadow: 0 0 0 3px #e5484d inset; }
@@ -95,10 +106,10 @@
   /* Stats */
   .stats { margin-top: 26px; width: 100%; max-width: 420px; background: var(--panel);
     border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
-  .stats h2 { margin: 0 0 10px; font-size: 1.1rem; }
-  .totals { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-  .totals .chip { background: #f6eef7; border-radius: 10px; padding: 6px 12px; font-size: .8rem; font-weight: 800; }
-  .totals .chip b { display:block; font-size: 1.2rem; color: var(--accent); }
+  .stats .statshead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .stats .statshead h2 { margin: 0; font-size: 1.1rem; }
+  .stats .chip { background: #f6eef7; border-radius: 10px; padding: 6px 12px; font-size: .85rem; font-weight: 800; }
+  .stats .chip b { color: var(--accent); }
   table { width: 100%; border-collapse: collapse; font-size: .82rem; }
   th, td { padding: 5px 4px; text-align: center; }
   th { opacity: .6; font-weight: 800; }
@@ -124,7 +135,7 @@
 </style>
 </head>
 <body>
-  <h1>Catoku 🐱</h1>
+  <h1>Catoku</h1>
   <div class="tag" id="dateTag"></div>
 
   <div class="bar">
@@ -144,16 +155,14 @@
     <button class="btn" id="resetBtn">↺ Reset</button>
     <button class="btn" id="rulesBtn">?</button>
   </div>
-  <div class="hint">Tap a cell: X (note) → 🐱 (cat) → empty. Tap a ✕ edge button to X-out a whole row or column.</div>
-
   <div class="stats" id="stats"></div>
 
   <div class="overlay" id="rulesOverlay">
     <div class="card">
-      <h2>How to play 🐾</h2>
+      <h2>How to play</h2>
       <p>Place one <b>cat 🐱</b> in every <b>row</b>, every <b>column</b>, and every <b>color group</b>.</p>
       <p>Cats are shy — no two cats may touch, not even diagonally.</p>
-      <p>Tap a cell to place an <b>X</b> note, tap again for a <b>cat</b>, again to clear.</p>
+      <p>Tap a cell to place an <b>✕</b> note, tap again for a <b>cat</b>, again to clear.</p>
       <p>Tap the <b>✕</b> buttons along the edges to X-out every empty tile in a whole row or column at once (tap again to clear those notes).</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
     </div>
@@ -516,9 +525,8 @@ function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.tim
 function renderStats(){
   const s=loadStore(); const el=document.getElementById("stats");
   const sizes=Object.keys(s.best).map(Number).sort((a,b)=>a-b);
-  let html='<h2>Your stats 🏆</h2><div class="totals">'+
-    '<div class="chip">Solved<b>'+(s.solved||0)+'</b></div>';
-  html+='</div>';
+  let html='<div class="statshead"><h2>Your stats</h2>'+
+    '<div class="chip">Solved <b>'+(s.solved||0)+'</b></div></div>';
   if(sizes.length){
     html+='<table><tr><th class="d">Board</th><th>Best time</th></tr>';
     for(const N of sizes) html+='<tr><td class="d">'+N+'×'+N+'</td><td class="ok">'+fmt(s.best[N])+'</td></tr>';
