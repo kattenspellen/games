@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catwalk — a &quot;Train Tracks&quot;-style cat logic puzzle</title>
+<meta name="description" content="Catwalk is a free daily logic puzzle: lay one connected trail of cat paws from entry to exit so each row and column holds exactly its count. Deterministic and solvable by pure deduction. No ads, no telemetry.">
+<link rel="canonical" href="https://kattenspellen.github.io/games/catwalk/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Catwalk — a &quot;Train Tracks&quot;-style cat logic puzzle">
+<meta property="og:description" content="A free daily logic puzzle with cats. Lay one connected paw trail from entry to exit, matching the row and column counts. No ads, no telemetry.">
+<meta property="og:url" content="https://kattenspellen.github.io/games/catwalk/">
+<meta property="og:image" content="https://kattenspellen.github.io/games/assets/catwalk-preview.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐾</text></svg>">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<meta name="theme-color" content="#7cc47f">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg: #fdf6f0;
+    --ink: #5b4a52;
+    --panel: #ffffff;
+    --accent: #7cc47f;   /* green — signature: tile fill, headings, theme-color */
+    --accent-2: #2b9d9d; /* teal — adjacent 2nd hue: primary button, trail bars, stubs, locked ring */
+    --shadow: 0 6px 20px rgba(120,90,110,.15);
+    --n: 6;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: linear-gradient(160deg,#fdf6f0,#e8f4e6);
+    color: var(--ink);
+    font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    min-height: 100%;
+  }
+  body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
+  h1 {
+    font-size: 2.2rem; margin: 8px 0 2px; letter-spacing: 1px;
+    font-weight: 900; color: var(--ink);
+  }
+  .tag { font-size: .85rem; opacity: .7; margin-bottom: 14px; }
+
+  .bar {
+    display: flex; align-items: center; gap: 14px; margin: 4px 0 14px;
+    font-weight: 800; font-size: 1.05rem;
+  }
+  .bar .clock { font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
+    background: var(--panel); padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(calc(var(--n) + 1), auto);
+    gap: 3px; background: #dcecdd; padding: 10px; border-radius: 14px;
+    box-shadow: var(--shadow);
+    touch-action: manipulation;
+    --cell: clamp(24px, calc((94vw - 48px)/(var(--n) + 1)), 62px);
+  }
+  .clue {
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #5f8a63; font-size: calc(var(--cell) * .44);
+    cursor: pointer; user-select: none; line-height: 1;
+    background: transparent; border: none; font-family: inherit;
+    transition: color .15s, transform .1s;
+  }
+  .clue:hover { color: var(--accent-2); }
+  .clue:active { transform: scale(.85); }
+  /* anchor numbers to the far edge so an endpoint's stub nub can't overlap them */
+  .clue.col { height: calc(var(--cell) * .72); align-items: flex-start; }
+  .clue.row { width: calc(var(--cell) * .72); justify-content: flex-start; }
+  .clue.bad { color: #e5484d; }
+  .cell {
+    width: var(--cell); height: var(--cell);
+    border-radius: 10px; cursor: pointer; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--cell) * .58); line-height: 1; user-select: none;
+    transition: transform .1s ease, background .15s, box-shadow .15s;
+    position: relative;
+  }
+  .cell:active { transform: scale(.92); }
+  .cell.track { background: #cbe9e8; } /* light tint of the teal --accent-2 */
+  .cell.empty { background: #eef3ec; }
+  .cell.locked { box-shadow: 0 0 0 2px var(--accent-2) inset; cursor: default; }
+  .cell.bad { box-shadow: 0 0 0 3px #e5484d inset; }
+  .cell .paw { position: relative; z-index: 1; animation: pop .28s cubic-bezier(.3,1.6,.5,1); }
+  .cell .x { font-size: calc(var(--cell) * .42); font-weight: 900; color: #b7c7b9; }
+  @keyframes pop { 0%{transform:scale(.2) rotate(-18deg);opacity:0;} 60%{transform:scale(1.18) rotate(6deg);} 100%{transform:scale(1) rotate(0);} }
+  /* entry/exit stubs: a nub poking off the grid edge of an endpoint cell */
+  .stub { position: absolute; background: var(--accent-2); }
+  .stub.n { top: calc(var(--cell) * -.24); left: 30%; width: 40%; height: calc(var(--cell) * .24); border-radius: 6px 6px 0 0; }
+  .stub.s { bottom: calc(var(--cell) * -.24); left: 30%; width: 40%; height: calc(var(--cell) * .24); border-radius: 0 0 6px 6px; }
+  .stub.w { left: calc(var(--cell) * -.24); top: 30%; height: 40%; width: calc(var(--cell) * .24); border-radius: 6px 0 0 6px; }
+  .stub.e { right: calc(var(--cell) * -.24); top: 30%; height: 40%; width: calc(var(--cell) * .24); border-radius: 0 6px 6px 0; }
+  /* in-grid track links: a bar from the cell centre out to each linked side, under the paw */
+  .link { position: absolute; background: var(--accent-2); border-radius: 5px; z-index: 0; }
+  .link.n { left: 50%; top: 0; transform: translateX(-50%); width: 24%; height: 54%; }
+  .link.s { left: 50%; bottom: 0; transform: translateX(-50%); width: 24%; height: 54%; }
+  .link.e { top: 50%; right: 0; transform: translateY(-50%); height: 24%; width: 54%; }
+  .link.w { top: 50%; left: 0; transform: translateY(-50%); height: 24%; width: 54%; }
+
+  .controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 800; font-size: .9rem;
+    padding: 9px 16px; border-radius: 12px; background: var(--panel); color: var(--ink);
+    box-shadow: var(--shadow); transition: transform .12s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--accent-2); color: #fff; }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+
+  .hint { font-size: .8rem; opacity: .65; margin-top: 12px; text-align: center; max-width: 340px; }
+
+  /* Stats */
+  .stats { margin-top: 26px; width: 100%; max-width: 420px; background: var(--panel);
+    border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .stats .statshead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .stats .statshead h2 { margin: 0; font-size: 1.1rem; }
+  .stats .chip { background: #eaf5ea; border-radius: 10px; padding: 6px 12px; font-size: .85rem; font-weight: 800; }
+  .stats .chip b { color: var(--accent-2); }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th, td { padding: 5px 4px; text-align: center; }
+  th { opacity: .6; font-weight: 800; }
+  td.d { text-align: left; opacity: .8; }
+  .ok { color: #4caf50; font-weight: 800; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(40,70,45,.4);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .card {
+    background: var(--panel); border-radius: 20px; padding: 26px; max-width: 360px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); text-align: center; animation: pop .3s ease;
+  }
+  .card h2 { margin: 6px 0 10px; }
+  .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
+    animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
+</style>
+</head>
+<body>
+  <h1>Catwalk</h1>
+  <div class="tag" id="dateTag"></div>
+
+  <div class="bar">
+    <div>🐾 <span id="pawCount">0</span>/<span id="pawTotal">0</span></div>
+    <div class="clock" id="clock">0:00</div>
+  </div>
+
+  <div id="board"></div>
+
+  <div class="controls">
+    <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
+      <input id="sizeInput" type="number" min="4" max="9" value="6"
+        style="width:3em;border:none;background:#eaf5ea;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
+    </label>
+    <button class="btn primary" id="newBtn">🎲 New</button>
+    <button class="btn" id="undoBtn">↶ Undo</button>
+    <button class="btn" id="resetBtn">↺ Reset</button>
+    <button class="btn" id="rulesBtn">?</button>
+  </div>
+  <div class="stats" id="stats"></div>
+
+  <div class="overlay" id="rulesOverlay">
+    <div class="card">
+      <h2>How to play</h2>
+      <p>Lay a single connected trail of <b>cat paws 🐾</b> from the <b>entry</b> nub to the <b>exit</b> nub.</p>
+      <p>The trail never branches, never crosses, and never loops — each paw connects to exactly two neighbours.</p>
+      <p>The number beside each <b>row</b> and above each <b>column</b> is how many paws it holds.</p>
+      <p>Tap a cell to cycle: <b>✕</b> (no track), then the six <b>paw-track</b> pieces — straights and elbows — then clear. Orient each piece so the paws link into one unbroken trail. Tap a row/column number to <b>✕</b> the rest of that line.</p>
+      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOverlay">
+    <div class="card">
+      <div style="font-size:3rem" id="winCat">😻</div>
+      <h2 id="winTitle">Purrfect!</h2>
+      <p style="text-align:center" id="winMsg"></p>
+      <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+/* ---------- deterministic daily RNG ---------- */
+function xmur3(str){ let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19); }
+  return function(){ h=Math.imul(h^(h>>>16),2246822507); h=Math.imul(h^(h>>>13),3266489909); return (h^=h>>>16)>>>0; }; }
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function makeRng(seed){ const s=xmur3(seed); return mulberry32(s()); }
+
+/* ---------- puzzle generation (Train-Tracks-style) ---------- */
+// N,E,S,W deltas; a paw cell links exactly 2 of its 4 edges, forming one path.
+const DIRS=[[-1,0],[0,1],[1,0],[0,-1]];
+const ekey=(a,b)=> a<b ? a+"_"+b : b+"_"+a; // undirected edge between two cell ids
+// player piece model: a cell links 2 of its 4 sides. grid value 2+i = one of the 6
+// pieces below; DBIT[d] is the link bit for dir d (N,E,S,W, matching DIRS order).
+const DBIT=[1,2,4,8];
+const PIECE_MASKS=[5,10,3,6,12,9]; // V,H,NE,SE,SW,NW (each = 2 link bits)
+const valMask=v=> v>=2?PIECE_MASKS[v-2]:0;
+const maskToVal=m=>{ const i=PIECE_MASKS.indexOf(m); return i<0?0:i+2; };
+
+// random self-avoiding walk from a border cell (entry) to another border cell
+// (exit), each with an off-grid stub. Loose on purpose — the solver filters.
+function genPath(N,rng){
+  const minLen=Math.max(N+1, Math.floor(N*N*0.35));
+  const maxLen=Math.floor(N*N*0.75);
+  const border=(r,c)=>r===0||c===0||r===N-1||c===N-1;
+  const offDirs=(r,c)=>{ const o=[]; for(let d=0;d<4;d++){ const nr=r+DIRS[d][0],nc=c+DIRS[d][1];
+    if(nr<0||nc<0||nr>=N||nc>=N) o.push(d); } return o; };
+  for(let attempt=0;attempt<500;attempt++){
+    const sr=Math.floor(rng()*N), sc=Math.floor(rng()*N);
+    if(!border(sr,sc)) continue;
+    const sOff=offDirs(sr,sc); if(!sOff.length) continue;
+    const entryDir=sOff[Math.floor(rng()*sOff.length)];
+    const path=[[sr,sc]], used=new Set([sr*N+sc]);
+    let done=false, exitDir=-1;
+    while(true){
+      const [r,c]=path[path.length-1];
+      if(path.length>=minLen && border(r,c) && (r!==sr||c!==sc)){
+        const o=offDirs(r,c);
+        if(o.length && (rng()<0.30 || path.length>=maxLen)){ exitDir=o[Math.floor(rng()*o.length)]; done=true; break; }
+      }
+      if(path.length>=maxLen) break;
+      const cand=[];
+      for(let d=0;d<4;d++){ const nr=r+DIRS[d][0],nc=c+DIRS[d][1];
+        if(nr<0||nc<0||nr>=N||nc>=N||used.has(nr*N+nc)) continue; cand.push([nr,nc]); }
+      if(!cand.length) break;
+      const pick=cand[Math.floor(rng()*cand.length)];
+      path.push(pick); used.add(pick[0]*N+pick[1]);
+    }
+    if(done){ const [er,ec]=path[path.length-1];
+      return { path, entry:{r:sr,c:sc,dir:entryDir}, exit:{r:er,c:ec,dir:exitDir} }; }
+  }
+  return null;
+}
+
+// derive the clue counts + solution edge/cell sets from a generated path
+function pathData(N,pp){
+  const tracks=new Set(pp.path.map(([r,c])=>r*N+c));
+  const rowCounts=Array(N).fill(0), colCounts=Array(N).fill(0);
+  for(const [r,c] of pp.path){ rowCounts[r]++; colCounts[c]++; }
+  const solEdges=new Set();
+  for(let i=0;i+1<pp.path.length;i++)
+    solEdges.add(ekey(pp.path[i][0]*N+pp.path[i][1], pp.path[i+1][0]*N+pp.path[i+1][1]));
+  return { tracks, rowCounts, colCounts, solEdges };
+}
+
+// human-style deductive solver: constraint propagation only, never guessing.
+// edges are ON/OFF/unknown; every cell ends at degree 0 (empty) or 2 (paw).
+// returns {dead, complete, tracks, state}; complete && !dead ⇒ fully deducible.
+// Rules: (1) degree — a paw needs exactly 2 links, so force/forbid edges once a
+// cell's on/possible counts pin it; (2) counts — a row/col whose known paws meet
+// its clue empties the rest, and one whose paws+unknowns equal its clue fills them.
+function solve(N,rowCounts,colCounts,entry,exit){
+  const cells=N*N, id=(r,c)=>r*N+c;
+  const inc=Array.from({length:cells},()=>[]);
+  const state=new Map();
+  function addEdge(a,b){ const k=ekey(a,b); if(!state.has(k)) state.set(k,0); inc[a].push(k); inc[b].push(k); }
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(c+1<N) addEdge(id(r,c),id(r,c+1));
+    if(r+1<N) addEdge(id(r,c),id(r+1,c));
+  }
+  const eCell=id(entry.r,entry.c), xCell=id(exit.r,exit.c);
+  state.set("s"+eCell,1); inc[eCell].push("s"+eCell);
+  state.set("s"+xCell,1); inc[xCell].push("s"+xCell);
+  const forcedTrack=new Set(), forcedEmpty=new Set();
+  let changed=true, dead=false;
+  function setEdge(k,v){ const cur=state.get(k); if(cur===0){ state.set(k,v); changed=true; } else if(cur!==v) dead=true; }
+  function status(cell){
+    let on=0,unk=0; for(const k of inc[cell]){ const v=state.get(k); if(v===1)on++; else if(v===0)unk++; }
+    if(forcedEmpty.has(cell)) return "e";
+    if(on>=1||forcedTrack.has(cell)) return "t";
+    if(on+unk<2) return "e";
+    return "u";
+  }
+  function lineRule(ids,clue){
+    let t=0,u=0; for(const cell of ids){ const s=status(cell); if(s==="t")t++; else if(s==="u")u++; }
+    if(t>clue || t+u<clue) return false;
+    if(t===clue){ for(const cell of ids) if(status(cell)==="u" && !forcedEmpty.has(cell)){ forcedEmpty.add(cell); changed=true; } }
+    else if(t+u===clue){ for(const cell of ids) if(status(cell)==="u" && !forcedTrack.has(cell)){ forcedTrack.add(cell); changed=true; } }
+    return true;
+  }
+  while(changed && !dead){
+    changed=false;
+    for(let cell=0;cell<cells && !dead;cell++){
+      const es=inc[cell]; let on=0; const unk=[];
+      for(const k of es){ const v=state.get(k); if(v===1)on++; else if(v===0)unk.push(k); }
+      const isTrack= on>=1 || forcedTrack.has(cell);
+      const isEmpty= forcedEmpty.has(cell) || (on===0 && on+unk.length<2);
+      if(isTrack && isEmpty){ dead=true; break; }
+      if(isTrack){
+        if(on>2){ dead=true; break; }
+        if(on===2){ for(const k of unk) setEdge(k,-1); }
+        else { const need=2-on; if(unk.length<need){ dead=true; break; } if(unk.length===need) for(const k of unk) setEdge(k,1); }
+      } else if(isEmpty){ for(const k of unk) setEdge(k,-1); }
+    }
+    if(dead) break;
+    for(let r=0;r<N && !dead;r++){ const ids=[]; for(let c=0;c<N;c++) ids.push(id(r,c)); if(!lineRule(ids,rowCounts[r])) dead=true; }
+    for(let c=0;c<N && !dead;c++){ const ids=[]; for(let r=0;r<N;r++) ids.push(id(r,c)); if(!lineRule(ids,colCounts[c])) dead=true; }
+  }
+  let complete=true; const tracks=new Set();
+  for(const v of state.values()) if(v===0) complete=false;
+  for(let cell=0;cell<cells;cell++) if(status(cell)==="t") tracks.add(cell);
+  return { dead, complete: complete && !dead, tracks, state };
+}
+
+// generate a fully-deducible board: retry fresh paths, return the first the
+// solver proves unique; keep the most-determined as a fallback if none do.
+function generatePuzzle(N,rng){
+  const retries=N<=6?160:N<=7?400:2500; // large boards are rarer to hit fully-deducible; budget up so we never serve a fall-back
+  let best=null, bestOn=-1;
+  for(let a=0;a<retries;a++){
+    const pp=genPath(N,rng); if(!pp) continue;
+    const {tracks,rowCounts,colCounts,solEdges}=pathData(N,pp);
+    const sol=solve(N,rowCounts,colCounts,pp.entry,pp.exit);
+    if(sol.dead) continue;
+    const puz={N,tracks,rowCounts,colCounts,entry:pp.entry,exit:pp.exit,solEdges};
+    if(sol.complete) return puz;
+    let on=0; for(const v of sol.state.values()) if(v!==0) on++;
+    if(on>bestOn){ bestOn=on; best=puz; }
+  }
+  return best;
+}
+
+/* ---------- config ---------- */
+const DEFAULT_N=6, MIN_N=4, MAX_N=9; // 9×9 stays fully deducible but needs a big retry budget (see generatePuzzle); worst-case gen ~250ms
+const CATS=["🐱","😺","😸","😹","😻","😼","😽"];
+const WINCATS=["😻","😸","😺","🐱","😹"];
+const WINPUNS=["Purrfect!","Meow-velous!","Paw-some!","Feline good!","Claw-some!","Purr-fectly played!","The cat's whiskers!","Hiss-toric win!","Totally paw-sitive!","You're kitten me!"];
+const STORE_KEY="catwalk_v1";
+
+/* ---------- date ---------- */
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+/* ---------- storage ---------- */
+// { best:{ N: seconds }, solved: count } — best time per board size + total solved (never the puzzle)
+function loadStore(){ try{ const s=JSON.parse(localStorage.getItem(STORE_KEY)); return (s&&s.best)?s:{best:{},solved:0}; }catch(e){ return {best:{},solved:0}; } }
+function saveStore(s){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(s)); }catch(e){} }
+function recordWin(N,time){
+  const s=loadStore(); s.solved=(s.solved||0)+1;
+  if(s.best[N]===undefined||time<s.best[N]) s.best[N]=time;
+  saveStore(s);
+}
+
+/* ---------- state ---------- */
+const puzzleCache={};
+let seedCounter=0;
+const state={ N:DEFAULT_N, seed:null, puz:null, grid:null, locked:null,
+  started:false, elapsed:0, timerId:null, won:false, undo:[] };
+
+function puzzleFor(N,seed){
+  if(!puzzleCache[seed]) puzzleCache[seed]=generatePuzzle(N, makeRng(seed));
+  return puzzleCache[seed];
+}
+
+/* ---------- render ---------- */
+const boardEl=document.getElementById("board");
+function loadGame(N,seed){
+  stopTimer();
+  state.N=N; state.seed=seed; state.puz=puzzleFor(N,seed);
+  N=state.puz.N;
+  state.grid=Array.from({length:N},()=>Array(N).fill(0)); // 0 unknown, 1 empty(✕), 2 paw
+  state.locked=Array.from({length:N},()=>Array(N).fill(false));
+  for(const ep of [state.puz.entry,state.puz.exit]){ // given, oriented: off-grid stub + the one in-grid link
+    let m=DBIT[ep.dir];
+    for(let d=0;d<4;d++){ const nr=ep.r+DIRS[d][0],nc=ep.c+DIRS[d][1];
+      if(nr>=0&&nc>=0&&nr<N&&nc<N&&state.puz.solEdges.has(ekey(ep.r*N+ep.c,nr*N+nc))) m|=DBIT[d]; }
+    state.grid[ep.r][ep.c]=maskToVal(m); state.locked[ep.r][ep.c]=true;
+  }
+  state.started=false; state.elapsed=0; state.won=false; state.undo=[];
+  document.getElementById("clock").textContent="0:00";
+  renderBoard(); updateCount(); updateUndo();
+}
+function clueBtn(kind,i){ // tap a row/col number to ✕ the rest of that line
+  const b=document.createElement("button");
+  b.className="clue "+kind;
+  b.textContent=kind==="row"?state.puz.rowCounts[i]:state.puz.colCounts[i];
+  b.dataset.kind=kind; b.dataset.i=i;
+  b.onclick=()=>{ const N=state.puz.N, cells=[];
+    for(let j=0;j<N;j++) cells.push(kind==="row"?[i,j]:[j,i]);
+    fillLine(cells); };
+  return b;
+}
+function renderBoard(){
+  const {N}=state.puz;
+  boardEl.style.setProperty("--n",N);
+  document.querySelector(":root").style.setProperty("--n",N);
+  boardEl.innerHTML="";
+  const corner=document.createElement("div"); boardEl.appendChild(corner);
+  for(let c=0;c<N;c++) boardEl.appendChild(clueBtn("col",c));
+  for(let r=0;r<N;r++){
+    boardEl.appendChild(clueBtn("row",r));
+    for(let c=0;c<N;c++){
+      const cell=document.createElement("div");
+      cell.className="cell"; cell.dataset.r=r; cell.dataset.c=c;
+      cell.onclick=()=>onCell(r,c);
+      boardEl.appendChild(cell);
+    }
+  }
+  paint();
+}
+// render a piece: a link/stub bar per linked side (off-grid dir → stub) + the paw
+function pieceHTML(v,stubDir){
+  const m=valMask(v); let h="";
+  for(let d=0;d<4;d++) if(m&DBIT[d]) h+='<div class="'+(d===stubDir?"stub ":"link ")+"nesw"[d]+'"></div>';
+  return h+'<span class="paw">🐾</span>';
+}
+function paint(){
+  const {N,entry,exit}=state.puz;
+  const bad=conflicts();
+  boardEl.querySelectorAll(".cell").forEach(cell=>{
+    const r=+cell.dataset.r, c=+cell.dataset.c, v=state.grid[r][c];
+    const stubDir=(entry.r===r&&entry.c===c)?entry.dir:(exit.r===r&&exit.c===c)?exit.dir:-1;
+    cell.className="cell"+(v>=2?" track":v===1?" empty":"")+(state.locked[r][c]?" locked":"")+(bad.has(r*N+c)?" bad":"");
+    cell.innerHTML = v>=2 ? pieceHTML(v,stubDir) : v===1 ? '<span class="x">✕</span>' : "";
+  });
+  document.querySelectorAll(".clue").forEach(b=>{
+    const kind=b.dataset.kind, i=+b.dataset.i;
+    b.classList.toggle("bad", kind==="row"?rowOver(i):colOver(i));
+  });
+}
+function lineCount(cells){ let n=0; for(const [r,c] of cells) if(state.grid[r][c]>=2) n++; return n; }
+function rowOver(r){ const N=state.puz.N, cells=[]; for(let c=0;c<N;c++) cells.push([r,c]); return lineCount(cells)>state.puz.rowCounts[r]; }
+function colOver(c){ const N=state.puz.N, cells=[]; for(let r=0;r<N;r++) cells.push([r,c]); return lineCount(cells)>state.puz.colCounts[c]; }
+function updateCount(){
+  const N=state.puz.N; let n=0, tot=0;
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){ if(state.grid[r][c]>=2) n++; }
+  tot=state.puz.tracks.size;
+  document.getElementById("pawCount").textContent=n;
+  document.getElementById("pawTotal").textContent=tot;
+}
+
+/* ---------- interaction ---------- */
+function onCell(r,c){
+  if(state.won||state.locked[r][c]) return;
+  if(!state.started) startTimer();
+  pushUndo();
+  const v=state.grid[r][c];
+  state.grid[r][c] = (v+1)%8; // cycle: unknown → ✕ → the 6 paw-track pieces → unknown
+  paint(); updateCount(); updateUndo(); checkWin();
+}
+
+// undo stack: one snapshot per user action (a whole-line fill is one action). Keep the last 10.
+function pushUndo(){ state.undo.push(state.grid.map(row=>row.slice())); if(state.undo.length>10) state.undo.shift(); }
+function undo(){ if(state.won||!state.undo.length) return; state.grid=state.undo.pop(); paint(); updateCount(); updateUndo(); }
+function updateUndo(){ document.getElementById("undoBtn").disabled=!state.undo.length; }
+
+// ✕ every unknown tile in a line; if none are unknown, clear its ✕ notes (paws & givens untouched)
+function fillLine(cells){
+  if(state.won) return;
+  if(!state.started) startTimer();
+  pushUndo();
+  const unknowns=cells.filter(([r,c])=>state.grid[r][c]===0);
+  if(unknowns.length) for(const [r,c] of unknowns) state.grid[r][c]=1;
+  else for(const [r,c] of cells) if(state.grid[r][c]===1 && !state.locked[r][c]) state.grid[r][c]=0;
+  paint(); updateCount(); updateUndo(); checkWin();
+}
+
+// paws in an over-filled row/col. (Adjacency isn't a cell-level rule: two path
+// segments may legally run alongside each other, so a paw may touch 3+ paws
+// while only *linking* two — and the player marks cells, not links.)
+function conflicts(){
+  const {N}=state.puz, g=state.grid, bad=new Set();
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(g[r][c]>=2 && (rowOver(r)||colOver(c))) bad.add(r*N+c);
+  }
+  return bad;
+}
+// a link exists only where BOTH cells point at each other. Win = the realized link
+// set equals the unique solution's edges — which forces every piece's shape, one
+// connected trail, and the right counts, since all of that is baked into solEdges.
+function realizedEdges(){
+  const {N}=state.puz, g=state.grid, es=new Set(), M=(r,c)=>valMask(g[r][c]);
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(c+1<N && (M(r,c)&DBIT[1]) && (M(r,c+1)&DBIT[3])) es.add(ekey(r*N+c,r*N+c+1)); // E↔W
+    if(r+1<N && (M(r,c)&DBIT[2]) && (M(r+1,c)&DBIT[0])) es.add(ekey(r*N+c,(r+1)*N+c)); // S↔N
+  }
+  return es;
+}
+function checkWin(){
+  const sol=state.puz.solEdges, es=realizedEdges();
+  if(es.size!==sol.size) return;
+  for(const k of es) if(!sol.has(k)) return;
+  win();
+}
+function win(){
+  const N=state.puz.N;
+  state.won=true; stopTimer();
+  recordWin(N,state.elapsed);
+  renderStats();
+  document.getElementById("winCat").textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
+  document.getElementById("winTitle").textContent=WINPUNS[Math.floor(Math.random()*WINPUNS.length)];
+  document.getElementById("winMsg").textContent="You laid the "+N+"×"+N+" paw trail in "+fmt(state.elapsed)+".";
+  document.getElementById("winOverlay").classList.add("show");
+  confetti();
+}
+function confetti(){
+  for(let i=0;i<24;i++){
+    const s=document.createElement("div");
+    s.className="confetti"; s.textContent=Math.random()<.5?"🐾":CATS[Math.floor(Math.random()*CATS.length)];
+    s.style.left=Math.random()*100+"vw";
+    s.style.animationDuration=(1.6+Math.random()*1.8)+"s";
+    s.style.animationDelay=(Math.random()*.5)+"s";
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),4000);
+  }
+}
+
+/* ---------- timer ---------- */
+function fmt(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function startTimer(){ state.started=true; state.timerId=setInterval(()=>{ state.elapsed++;
+  document.getElementById("clock").textContent=fmt(state.elapsed); },1000); }
+function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
+
+/* ---------- stats ---------- */
+function renderStats(){
+  const s=loadStore(); const el=document.getElementById("stats");
+  const sizes=Object.keys(s.best).map(Number).sort((a,b)=>a-b);
+  let html='<div class="statshead"><h2>Your stats</h2>'+
+    '<div class="chip">Solved <b>'+(s.solved||0)+'</b></div></div>';
+  if(sizes.length){
+    html+='<table><tr><th class="d">Board</th><th>Best time</th></tr>';
+    for(const N of sizes) html+='<tr><td class="d">'+N+'×'+N+'</td><td class="ok">'+fmt(s.best[N])+'</td></tr>';
+    html+='</table>';
+  } else html+='<p style="opacity:.6">No trails laid yet — solve one to start your record!</p>';
+  el.innerHTML=html;
+}
+
+/* ---------- wire up ---------- */
+const sizeInput=document.getElementById("sizeInput");
+function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
+function newGame(){ const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+document.getElementById("dateTag").textContent="Fresh cat-paw trails, any size 4–"+MAX_N;
+document.getElementById("newBtn").onclick=newGame;
+document.getElementById("undoBtn").onclick=undo;
+document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
+document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
+document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+loadGame(DEFAULT_N, todayStr()+"|catwalk"); // daily default board
+renderStats();
+
+/* ---------- self-check (console) ---------- */
+function runSelfTest(){
+  let ok=true;
+  for(let N=MIN_N;N<=MAX_N;N++){
+    const puz=generatePuzzle(N, makeRng("test|"+N));
+    if(!puz){ ok=false; console.log("  "+N+"×"+N+": no puzzle ❌"); continue; }
+    // clue counts must match the served solution's paw cells
+    const rc=Array(N).fill(0), cc=Array(N).fill(0);
+    for(const t of puz.tracks){ rc[Math.floor(t/N)]++; cc[t%N]++; }
+    for(let i=0;i<N;i++) if(rc[i]!==puz.rowCounts[i]||cc[i]!==puz.colCounts[i]) ok=false;
+    // endpoints must sit on the border
+    for(const ep of [puz.entry,puz.exit]) if(!(ep.r===0||ep.c===0||ep.r===N-1||ep.c===N-1)) ok=false;
+    // every path cell must resolve to a real 2-link piece (2 incident links, stub counts at endpoints)
+    const deg=Array(N*N).fill(0);
+    for(const k of puz.solEdges){ const [a,b]=k.split("_").map(Number); deg[a]++; deg[b]++; }
+    deg[puz.entry.r*N+puz.entry.c]++; deg[puz.exit.r*N+puz.exit.c]++;
+    for(const t of puz.tracks) if(deg[t]!==2) ok=false;
+    // re-solve: when fully deducible, the deduced trail must match the generator's
+    const sol=solve(N,puz.rowCounts,puz.colCounts,puz.entry,puz.exit);
+    const solvable=sol.complete;
+    if(solvable){
+      if(sol.tracks.size!==puz.tracks.size) ok=false;
+      for(const k of sol.tracks) if(!puz.tracks.has(k)) ok=false;
+    }
+    console.log("  "+N+"×"+N+": "+(solvable?"logically solvable ✅":"fell back ⚠️"));
+    console.assert(ok,"Catwalk self-test failed for "+N);
+  }
+  console.log(ok?"Catwalk self-test passed ✅":"Catwalk self-test FAILED ❌");
+  return ok;
+}
+if(location.hostname==="localhost"||location.hash==="#selftest") runSelfTest();
+</script>
+</body>
+</html>
