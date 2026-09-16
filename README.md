@@ -16,5 +16,11 @@ A "Queens"-style logic puzzle with cats. One cat per row, column, and color regi
 
 <img src="assets/catoku-demo.gif" alt="Catoku demo" width="400">
 
+### 🐾 [Catwalk](https://kattenspellen.github.io/games/catwalk/)
+
+A "Train Tracks"-style logic puzzle. Lay one connected paw trail to match the row and column counts.
+
+<img src="assets/catwalk-demo.gif" alt="Catwalk demo" width="400">
+
 </div>
 
