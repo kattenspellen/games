@@ -8,6 +8,7 @@ Games:
 
 - **Catoku** (`catoku/`) — a "Queens"-style puzzle. See `catoku/CLAUDE.md`.
 - **Catwalk** (`catwalk/`) — a "Train Tracks"-style puzzle. See `catwalk/CLAUDE.md`.
+- **Meowsweeper** (`meowsweeper/`) — a "Minesweeper"-style puzzle. See `meowsweeper/CLAUDE.md`.
 
 Every game is built to the shared criteria below, so each is solid on its own
 and obviously part of the same family. Conventions that are strictly one game's
