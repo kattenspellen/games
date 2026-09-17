@@ -60,6 +60,15 @@
   }
   .bar .clock { font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
     background: var(--panel); padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); }
+  .clock.ahead { color: #2fa360; }
+  .clock.behind { color: #e5484d; }
+  .challenge {
+    margin: -2px 0 14px; padding: 8px 16px; border-radius: 999px;
+    font-weight: 800; font-size: .92rem; background: var(--panel);
+    box-shadow: 0 0 0 2px var(--accent-2) inset, var(--shadow);
+  }
+  .challenge.bad { box-shadow: 0 0 0 2px #e5484d inset, var(--shadow); color: #e5484d; }
+  .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
 
   #board {
     display: grid;
@@ -145,6 +154,7 @@
     <div class="clock" id="clock">0:00</div>
   </div>
 
+  <div id="challenge" class="challenge" style="display:none"></div>
   <div id="board"></div>
 
   <div class="controls">
@@ -175,7 +185,10 @@
       <div style="font-size:3rem" id="winCat">😻</div>
       <h2 id="winTitle">Purrfect!</h2>
       <p style="text-align:center" id="winMsg"></p>
-      <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+      <div class="winbtns">
+        <button class="btn" id="shareBtn">🔗 Copy challenge</button>
+        <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+      </div>
     </div>
   </div>
 
@@ -371,7 +384,7 @@ function recordWin(N,time){
 const puzzleCache={}; // key = seed string
 let seedCounter=0;
 const state={ N:DEFAULT_N, seed:null, puz:null, grid:null, emoji:null,
-  started:false, elapsed:0, timerId:null, won:false, undo:[] };
+  started:false, elapsed:0, timerId:null, won:false, undo:[], challenge:null };
 
 function puzzleFor(N,seed){
   if(!puzzleCache[seed]) puzzleCache[seed]=generatePuzzle(N, makeRng(seed));
@@ -387,7 +400,7 @@ function loadGame(N,seed){
   state.grid=Array.from({length:N},()=>Array(N).fill(0)); // 0 empty,1 mark,2 cat
   state.emoji=Array.from({length:N},()=>Array(N).fill(null));
   state.started=false; state.elapsed=0; state.won=false; state.undo=[];
-  document.getElementById("clock").textContent="0:00";
+  document.getElementById("clock").textContent="0:00"; updateChallengeUI();
   renderBoard(); updateCount(); updateUndo();
 }
 function hdrBtn(kind,i){ // edge button that X-outs a whole row (kind='row') or column (kind='col')
@@ -501,7 +514,11 @@ function win(){
   renderStats();
   document.getElementById("winCat").textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
   document.getElementById("winTitle").textContent=WINPUNS[Math.floor(Math.random()*WINPUNS.length)];
-  document.getElementById("winMsg").textContent="You solved a "+N+"×"+N+" board in "+fmt(state.elapsed)+".";
+  let msg="You solved a "+N+"×"+N+" board in "+fmt(state.elapsed)+".";
+  if(state.challenge) msg += state.elapsed<=state.challenge.time
+    ? " 🏆 You beat the "+fmt(state.challenge.time)+" challenge!"
+    : " 🐾 The target was "+fmt(state.challenge.time)+" — try again!";
+  document.getElementById("winMsg").textContent=msg;
   document.getElementById("winOverlay").classList.add("show");
   confetti();
 }
@@ -520,7 +537,7 @@ function confetti(){
 /* ---------- timer ---------- */
 function fmt(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
 function startTimer(){ state.started=true; state.timerId=setInterval(()=>{ state.elapsed++;
-  document.getElementById("clock").textContent=fmt(state.elapsed); },1000); }
+  document.getElementById("clock").textContent=fmt(state.elapsed); updateChallengeUI(); },1000); }
 function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
 
 /* ---------- stats ---------- */
@@ -540,7 +557,35 @@ function renderStats(){
 /* ---------- wire up ---------- */
 const sizeInput=document.getElementById("sizeInput");
 function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
-function newGame(){ const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+
+/* ---------- challenge links ---------- */
+// Shareable board: the hash carries only N ~ seed ~ challenger-time. The receiver
+// re-runs the generator (never the solution) — same seed ⇒ same board anywhere.
+function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+"~"+state.elapsed; }
+function parseChallenge(){
+  const m=location.hash.match(/^#c=(\d+)~([^~]+)~(\d+)$/); if(!m) return null;
+  const N=+m[1], seed=decodeURIComponent(m[2]), time=+m[3];
+  if(N<MIN_N||N>MAX_N||!seed||!isFinite(time)||time<0) return null; // out of range / unparseable ⇒ decline
+  return {N,seed,time};
+}
+function copyChallenge(btn){
+  const link=buildChallengeLink();
+  const ok=()=>{ btn.textContent="✓ Copied!"; setTimeout(()=>{ btn.textContent="🔗 Copy challenge"; },1600); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok,()=>prompt("Copy this challenge link:",link));
+  else prompt("Copy this challenge link:",link);
+}
+function showChallenge(){ const el=document.getElementById("challenge");
+  el.className="challenge"; el.textContent="🏁 Beat "+fmt(state.challenge.time)+" — race the clock!"; el.style.display=""; }
+function showBadLink(){ const el=document.getElementById("challenge");
+  el.className="challenge bad"; el.textContent="⚠️ Couldn't load that challenge — here's today's board."; el.style.display=""; }
+function clearChallenge(){ state.challenge=null;
+  document.getElementById("challenge").style.display="none";
+  if(location.hash) history.replaceState(null,"",location.pathname); updateChallengeUI(); }
+function updateChallengeUI(){ const clk=document.getElementById("clock");
+  clk.classList.toggle("ahead", !!state.challenge && state.elapsed<=state.challenge.time);
+  clk.classList.toggle("behind", !!state.challenge && state.elapsed>state.challenge.time); }
+
 // click the backdrop (outside the card) to dismiss any overlay
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
 document.getElementById("dateTag").textContent="Fresh cat puzzles, any size 4–"+MAX_N;
@@ -549,7 +594,10 @@ document.getElementById("undoBtn").onclick=undo;
 document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
-loadGame(DEFAULT_N, todayStr()+"|"+DEFAULT_N); // daily default board
+document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
+const incoming=parseChallenge();
+if(incoming){ state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
+else { loadGame(DEFAULT_N, todayStr()+"|"+DEFAULT_N); if(location.hash.indexOf("#c=")===0) showBadLink(); } // daily default board
 renderStats();
 
 /* ---------- self-check (console) ---------- */

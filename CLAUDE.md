@@ -40,6 +40,21 @@ Every game offers the same two modes:
   (Catoku uses board size); a game defines its own and documents it in its
   `CLAUDE.md`.
 
+## Challenge links
+
+Every game lets a finisher share the exact board they solved as a race. On win,
+a **Copy challenge** button on the win overlay writes a link whose **hash**
+carries only `N`, the seed string (URL-encoded), and the challenger's time in
+seconds, `~`-separated: `…/<game>/#c=<N>~<seed>~<seconds>`. The link never
+carries the solution — the receiver re-runs the generator from the seed, so the
+same seed reproduces the same board anywhere (determinism is what makes this
+work). On load, a valid hash loads that board and shows a "Beat <time>" banner
+with the clock tinting green/red against the target; an **invalid or
+out-of-range** hash declines with a short notice and falls back to the daily
+board — never fabricate a board. Times are self-reported and unverified (fine
+for a friendly race); no version pinning. Same encode/parse/validate helpers in
+all three games — keep them identical.
+
 ## Determinism & fairness
 
 For any game with generated content:
