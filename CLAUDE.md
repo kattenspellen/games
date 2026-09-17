@@ -55,6 +55,12 @@ For any game with generated content:
   under the same rules the player plays) before serving — never assume it. An
   instance that isn't fully deducible is a bug, not a hard puzzle; regenerate or
   fail loudly rather than serve it.
+- **Prove from the player's actual starting state.** The deductive proof must
+  begin from the exact state the player is handed — if the solver assumes an
+  opening is already revealed, the served board must pre-reveal it too, or the
+  player who deviates isn't playing the puzzle we proved. Relatedly, the first
+  interaction must never be an unavoidable loss (e.g. Meowsweeper pre-reveals
+  the safe opening region so the first dig can't hit a monster).
 
 ## One source of truth for rules
 
@@ -74,9 +80,16 @@ change a rule in all of them, or they disagree.
 ## Discoverability
 
 Every page carries the full head set: `<title>`, `<meta name="description">`,
-canonical URL, Open Graph tags (type/title/description/url/image),
-`theme-color`, the inline-SVG emoji favicon, `apple-touch-icon`, and a per-game
-`manifest.webmanifest`. Add each game to the repo `sitemap.xml`.
+canonical URL, Open Graph tags (type/title/description/url/image), Twitter Card
+tags (`twitter:card` + `twitter:image` — `summary_large_image` for games,
+`summary` for the landing; title/description fall back to OG so links unfurl
+with an image in messaging apps and on X), `theme-color`, the inline-SVG emoji
+favicon, `apple-touch-icon`, and a per-game `manifest.webmanifest`. Add each
+game to the repo `sitemap.xml`.
+
+Each game also ships two shared social/README assets under `assets/`: a
+`<game>-preview.png` (700×700, the og/twitter image — a clean single frame of
+the game) and a `<game>-demo.gif` (linked in `README.md` at `width="400"`).
 
 ## Visual style
 
@@ -97,7 +110,9 @@ each one distinct. Split accordingly.
   scales down, wins pop.
 - **Component vocabulary**: pill tabs (`border-radius:999px`), rounded/pill
   buttons (the primary one filled with the game's accent), an `h1` + one-line
-  subtitle header, chips for clock/stats. Reuse these; don't invent parallels.
+  subtitle header, chips for clock/stats, and `.overlay` modals (rules/win/lose
+  — a centered `.card` on the accent-tinted scrim, dismissable by clicking the
+  backdrop). Reuse these; don't invent parallels.
 - **Landing tile**: one `a.card` per game — emoji + `<h2>` name + one-line
   description.
 - **Mood**: soft, playful, pastel. Cats and emoji, never harsh.
