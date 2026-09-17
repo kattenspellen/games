@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meowsweeper — a &quot;Minesweeper&quot;-style cat logic puzzle</title>
+<meta name="description" content="Meowsweeper is a free daily logic puzzle: clear every safe tile without waking the spooky things that scare the cats. Every board is deterministic and solvable by pure deduction — no guessing. No ads, no telemetry.">
+<link rel="canonical" href="https://kattenspellen.github.io/games/meowsweeper/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Meowsweeper — a &quot;Minesweeper&quot;-style cat logic puzzle">
+<meta property="og:description" content="A free daily logic puzzle with cats. Clear every safe tile and flag the spooky things — no guessing, ever. No ads, no telemetry.">
+<meta property="og:url" content="https://kattenspellen.github.io/games/meowsweeper/">
+<meta property="og:image" content="https://kattenspellen.github.io/games/assets/meowsweeper-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://kattenspellen.github.io/games/assets/meowsweeper-preview.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🙀</text></svg>">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<meta name="theme-color" content="#b39ddb">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg: #fdf6f0;
+    --ink: #5b4a52;
+    --panel: #ffffff;
+    --accent: #b39ddb;   /* lavender — signature: headings, theme-color, tile h2 */
+    --accent-2: #5b8dee; /* blue — 2nd hue: primary button, flags, links, covered-tile edge */
+    --shadow: 0 6px 20px rgba(120,90,110,.15);
+    --n: 8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: linear-gradient(160deg,#fdf6f0,#e7eeff);
+    color: var(--ink);
+    font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    min-height: 100%;
+  }
+  body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
+  h1 {
+    font-size: 2.2rem; margin: 8px 0 2px; letter-spacing: 1px;
+    font-weight: 900; color: var(--ink);
+  }
+  .tag { font-size: .85rem; opacity: .7; margin-bottom: 14px; }
+
+  .bar {
+    display: flex; align-items: center; gap: 14px; margin: 4px 0 14px;
+    font-weight: 800; font-size: 1.05rem;
+  }
+  .bar .clock { font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
+    background: var(--panel); padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(var(--n), auto);
+    gap: 3px; background: #e5ddf3; padding: 10px; border-radius: 14px;
+    box-shadow: var(--shadow);
+    touch-action: manipulation;
+    --cell: clamp(26px, calc((94vw - 40px)/var(--n)), 60px);
+  }
+  .cell {
+    width: var(--cell); height: var(--cell);
+    border-radius: 9px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--cell) * .52); font-weight: 900; line-height: 1; user-select: none;
+    transition: transform .1s ease, background .15s, box-shadow .15s;
+    position: relative;
+  }
+  /* covered tile: a soft raised lavender button */
+  .cell.covered { background: #e6def5; box-shadow: 0 2px 0 #cdbfe8 inset, 0 -2px 4px rgba(255,255,255,.6) inset; }
+  .cell.covered:hover { background: #efe9fa; transform: translateY(-2px); }
+  .cell.covered:active { transform: scale(.92); }
+  .cell.flag { background: #dfe8ff; box-shadow: 0 0 0 2px var(--accent-2) inset; }
+  .cell.flag .mark { animation: pop .28s cubic-bezier(.3,1.6,.5,1); }
+  /* revealed safe tile: flat, light */
+  .cell.open { background: #f7f3fd; cursor: default; }
+  .cell.open .num { animation: pop .2s ease; }
+  /* revealed mines on loss */
+  .cell.mine { background: #ffdede; }
+  .cell.mine.boom { background: #ff9c9c; }
+  .cell.mine .mark, .cell.mine.boom .mark { animation: pop .28s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { 0%{transform:scale(.2) rotate(-14deg);opacity:0;} 60%{transform:scale(1.18) rotate(5deg);} 100%{transform:scale(1) rotate(0);} }
+
+  .controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 800; font-size: .9rem;
+    padding: 9px 16px; border-radius: 12px; background: var(--panel); color: var(--ink);
+    box-shadow: var(--shadow); transition: transform .12s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--accent-2); color: #fff; }
+  .btn.mode.on { background: var(--accent-2); color: #fff; }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+
+  .hint { font-size: .8rem; opacity: .65; margin-top: 12px; text-align: center; max-width: 360px; }
+
+  /* Stats */
+  .stats { margin-top: 26px; width: 100%; max-width: 420px; background: var(--panel);
+    border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .stats .statshead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .stats .statshead h2 { margin: 0; font-size: 1.1rem; }
+  .stats .chip { background: #efeafa; border-radius: 10px; padding: 6px 12px; font-size: .85rem; font-weight: 800; }
+  .stats .chip b { color: var(--accent-2); }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th, td { padding: 5px 4px; text-align: center; }
+  th { opacity: .6; font-weight: 800; }
+  td.d { text-align: left; opacity: .8; }
+  .ok { color: #4caf50; font-weight: 800; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(55,48,80,.4);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .card {
+    background: var(--panel); border-radius: 20px; padding: 26px; max-width: 360px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); text-align: center; animation: pop .3s ease;
+  }
+  .card h2 { margin: 6px 0 10px; }
+  .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
+    animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
+</style>
+</head>
+<body>
+  <h1>Meowsweeper</h1>
+  <div class="tag" id="dateTag"></div>
+
+  <div class="bar">
+    <div>🚩 <span id="flagCount">0</span>/<span id="mineTotal">0</span></div>
+    <div class="clock" id="clock">0:00</div>
+  </div>
+
+  <div id="board"></div>
+
+  <div class="controls">
+    <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
+      <input id="sizeInput" type="number" min="5" max="10" value="8"
+        style="width:3em;border:none;background:#efeafa;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
+    </label>
+    <button class="btn primary" id="newBtn">🎲 New</button>
+    <button class="btn mode" id="flagBtn">🔨 Dig</button>
+    <button class="btn" id="resetBtn">↺ Reset</button>
+    <button class="btn" id="rulesBtn">?</button>
+  </div>
+  <div class="hint">Tap the <b>🔨/🚩</b> button to switch between digging and flagging. On a desktop, right-click a tile to flag it.</div>
+  <div class="stats" id="stats"></div>
+
+  <div class="overlay" id="rulesOverlay">
+    <div class="card">
+      <h2>How to play</h2>
+      <p>Spooky things are hiding among the tiles 👻🤡👽 — clear every safe tile without digging one up to keep your cat safe!</p>
+      <p>Each opened tile shows how many spooky things touch it (its 8 neighbours). A <b>blank</b> tile has none, so its neighbours auto-clear.</p>
+      <p>Use those numbers to deduce where the spooky things are — every board is solvable by <b>pure logic, no guessing</b>. Switch to 🚩 mode (or right-click) to flag them.</p>
+      <p>Clear all safe tiles to win. Dig up a spooky thing and the cats bolt — 🙀 — but you can try the same board again.</p>
+      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOverlay">
+    <div class="card">
+      <div style="font-size:3rem" id="winCat">😻</div>
+      <h2 id="winTitle">Purrfect!</h2>
+      <p style="text-align:center" id="winMsg"></p>
+      <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="loseOverlay">
+    <div class="card">
+      <div style="font-size:3rem">🙀</div>
+      <h2>Spooked!</h2>
+      <p style="text-align:center" id="loseMsg"></p>
+      <button class="btn primary" id="retryBtn">Try again</button>
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+/* ---------- deterministic RNG ---------- */
+function xmur3(str){ let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19); }
+  return function(){ h=Math.imul(h^(h>>>16),2246822507); h=Math.imul(h^(h>>>13),3266489909); return (h^=h>>>16)>>>0; }; }
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function makeRng(seed){ const s=xmur3(seed); return mulberry32(s()); }
+
+/* ---------- puzzle generation (Minesweeper-style, no-guess) ---------- */
+// A cell id is r*N+c. nbrs = the 8 surrounding cells (Chebyshev neighbours).
+function nbrs(N,cell){ const r=(cell/N)|0, c=cell%N, out=[];
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc) continue;
+    const nr=r+dr, nc=c+dc; if(nr>=0&&nc>=0&&nr<N&&nc<N) out.push(nr*N+nc); } return out; }
+
+// human-style deductive solver: simulate a player who never guesses. Reveal the
+// (guaranteed-blank) start, flood its zero-region, then propagate. known: 0
+// unknown, 1 safe-revealed, 2 known-mine. complete ⇒ every safe cell deduced.
+// Two rule families: (1) count — a revealed number whose remaining mines equal
+// its unknown neighbours flags them, or whose remaining is 0 clears them; and
+// (2) subset (the 1-2 rule) — if one clue's unknowns are a subset of another's,
+// the difference set is forced all-mine or all-safe.
+function solve(N,mines,start){
+  const cells=N*N, num=Array(cells).fill(0);
+  for(let c=0;c<cells;c++){ if(mines.has(c)) continue; let n=0;
+    for(const nb of nbrs(N,c)) if(mines.has(nb)) n++; num[c]=n; }
+  const known=Array(cells).fill(0);
+  function floodReveal(c){ const s=[c];
+    while(s.length){ const x=s.pop(); if(known[x]!==0) continue; known[x]=1;
+      if(num[x]===0) for(const nb of nbrs(N,x)) if(known[nb]===0) s.push(nb); } }
+  floodReveal(start); // start's 3×3 is mine-free, so num[start]===0 and the flood only walks safe cells
+  function clueUnknowns(cell){ let mineN=0; const unk=[];
+    for(const nb of nbrs(N,cell)){ if(known[nb]===2) mineN++; else if(known[nb]===0) unk.push(nb); }
+    return {unk, rem:num[cell]-mineN}; }
+  function subsetPass(){
+    const cons=[];
+    for(let cell=0;cell<cells;cell++){ if(known[cell]!==1||num[cell]===0) continue;
+      const cu=clueUnknowns(cell); if(cu.unk.length) cons.push(cu); }
+    let ch=false;
+    for(let i=0;i<cons.length;i++) for(let j=0;j<cons.length;j++){ if(i===j) continue;
+      const A=cons[i], B=cons[j];
+      if(A.unk.length>=B.unk.length) continue; // need strict subset A ⊊ B
+      const aset=new Set(A.unk);
+      if(!A.unk.every(x=>B.unk.includes(x))) continue;
+      const diff=B.unk.filter(x=>!aset.has(x)), need=B.rem-A.rem;
+      if(need===0){ for(const x of diff) if(known[x]===0){ floodReveal(x); ch=true; } }
+      else if(need===diff.length){ for(const x of diff) if(known[x]===0){ known[x]=2; ch=true; } } }
+    return ch;
+  }
+  let changed=true;
+  while(changed){
+    changed=false;
+    for(let cell=0;cell<cells;cell++){
+      if(known[cell]!==1||num[cell]===0) continue;
+      const {unk,rem}=clueUnknowns(cell); if(!unk.length) continue;
+      if(rem===0){ for(const x of unk){ floodReveal(x); changed=true; } }
+      else if(rem===unk.length){ for(const x of unk){ known[x]=2; } changed=true; } }
+    if(!changed) changed=subsetPass();
+  }
+  let complete=true;
+  for(let c=0;c<cells;c++) if(!mines.has(c)&&known[c]!==1){ complete=false; break; }
+  return { complete, known, num };
+}
+
+const DENSITY=0.15; // mine fraction; kept modest so no-guess boards land inside the retry budget
+function mineCount(N){ return Math.max(1, Math.round(N*N*DENSITY)); }
+
+// count cells the opening flood alone reveals from start (reveal start, flood its zero-region).
+function openFloodCount(N,num,start){
+  const seen=new Set(), s=[start];
+  while(s.length){ const x=s.pop(); if(seen.has(x)) continue; seen.add(x);
+    if(num[x]===0) for(const nb of nbrs(N,x)) if(!seen.has(nb)) s.push(nb); }
+  return seen.size;
+}
+
+// build a fully-deducible board: random mine layout with a mine-free 3×3 around a
+// random start, retry until the solver proves it no-guess; keep the most-revealed
+// layout as a fallback (never expected to serve — see self-test).
+function generatePuzzle(N,rng){
+  const cells=N*N, M=mineCount(N);
+  const retries = N<=6?400 : N<=8?1200 : 3000;
+  let best=null, bestRev=-1;
+  for(let a=0;a<retries;a++){
+    const start=Math.floor(rng()*cells);
+    const excl=new Set([start,...nbrs(N,start)]);
+    const pool=[]; for(let c=0;c<cells;c++) if(!excl.has(c)) pool.push(c);
+    if(pool.length<M) continue;
+    const mines=new Set();
+    for(let k=0;k<M;k++){ const idx=k+Math.floor(rng()*(pool.length-k)); // partial Fisher–Yates
+      const t=pool[k]; pool[k]=pool[idx]; pool[idx]=t; mines.add(pool[k]); }
+    const sol=solve(N,mines,start);
+    // serve only if solvable AND the opening flood doesn't already reveal everything (needs a real dig)
+    if(sol.complete && openFloodCount(N,sol.num,start)!==cells-M) return {N,mines,start,num:sol.num,M};
+    let rev=0; for(const v of sol.known) if(v===1) rev++;
+    if(rev>bestRev){ bestRev=rev; best={N,mines,start,num:sol.num,M}; }
+  }
+  return best;
+}
+
+/* ---------- config ---------- */
+const DEFAULT_N=8, MIN_N=5, MAX_N=10; // board size is the difficulty; density fixed
+const SPOOKY=["🤡","👻","👽","🧟","🐍","🦠","⛈️","☄️","🎃","🧨","🛸","💉","💥","☢️"]; // the "mines" — things that scare cats
+const NUMCOL=["","#5b8dee","#3aa657","#e5484d","#8b5cf6","#b45309","#0f8a8a","#5b4a52","#8a8a8a"];
+const WINCATS=["😻","😸","😺","🐱","😹"];
+const WINPUNS=["Purrfect!","Meow-velous!","Paw-some!","Feline good!","Claw-some!","Purr-fectly played!","The cat's whiskers!","Hiss-toric win!","Totally paw-sitive!","You're kitten me!"];
+const STORE_KEY="meowsweeper_v1";
+
+/* ---------- date ---------- */
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+/* ---------- storage ---------- */
+// { best:{ N: seconds }, solved: count } — best clear time per size + total solved (never the puzzle)
+function loadStore(){ try{ const s=JSON.parse(localStorage.getItem(STORE_KEY)); return (s&&s.best)?s:{best:{},solved:0}; }catch(e){ return {best:{},solved:0}; } }
+function saveStore(s){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(s)); }catch(e){} }
+function recordWin(N,time){
+  const s=loadStore(); s.solved=(s.solved||0)+1;
+  if(s.best[N]===undefined||time<s.best[N]) s.best[N]=time;
+  saveStore(s);
+}
+
+/* ---------- state ---------- */
+const puzzleCache={};
+let seedCounter=0;
+const state={ N:DEFAULT_N, seed:null, puz:null, rev:null, flag:null, emoji:null,
+  started:false, elapsed:0, timerId:null, won:false, lost:false, flagMode:false,
+  pressTimer:null, suppressClick:false };
+
+function puzzleFor(N,seed){
+  if(!puzzleCache[seed]) puzzleCache[seed]=generatePuzzle(N, makeRng(seed));
+  return puzzleCache[seed];
+}
+
+/* ---------- render ---------- */
+const boardEl=document.getElementById("board");
+function loadGame(N,seed){
+  stopTimer();
+  state.N=N; state.seed=seed; state.puz=puzzleFor(N,seed);
+  N=state.puz.N;
+  state.rev=Array(N*N).fill(false);
+  state.flag=Array(N*N).fill(false);
+  // cosmetic-only: distinct spooky emoji per mine (shuffled bag, refills after all 14 used)
+  state.emoji={}; let bag=[];
+  for(const m of state.puz.mines){
+    if(!bag.length){ bag=SPOOKY.slice();
+      for(let i=bag.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=bag[i]; bag[i]=bag[j]; bag[j]=t; } }
+    state.emoji[m]=bag.pop();
+  }
+  state.started=false; state.elapsed=0; state.won=false; state.lost=false;
+  floodOpen(state.puz.start); // pre-reveal the opening region so the board matches the solver's starting state
+  document.getElementById("clock").textContent="0:00";
+  renderBoard(); updateCount();
+}
+function renderBoard(){
+  const {N}=state.puz;
+  boardEl.style.setProperty("--n",N);
+  document.querySelector(":root").style.setProperty("--n",N);
+  boardEl.innerHTML="";
+  for(let cell=0;cell<N*N;cell++){
+    const el=document.createElement("div");
+    el.className="cell"; el.dataset.cell=cell;
+    el.onclick=()=>onCell(cell,false);
+    el.oncontextmenu=(e)=>{ e.preventDefault(); onCell(cell,true); };
+    // long-press to flag on touch; the timer fires the flag and swallows the synthetic click
+    const clearPress=()=>{ if(state.pressTimer){ clearTimeout(state.pressTimer); state.pressTimer=null; } };
+    el.addEventListener("touchstart",()=>{ clearPress();
+      state.pressTimer=setTimeout(()=>{ state.pressTimer=null; onCell(cell,true); state.suppressClick=true; },450); },{passive:true});
+    el.addEventListener("touchend",clearPress);
+    el.addEventListener("touchmove",clearPress);
+    el.addEventListener("touchcancel",clearPress);
+    boardEl.appendChild(el);
+  }
+  paint();
+}
+function paint(){
+  const {mines,num}=state.puz;
+  boardEl.querySelectorAll(".cell").forEach(el=>{
+    const cell=+el.dataset.cell;
+    if(state.rev[cell]){
+      const n=num[cell];
+      el.className="cell open";
+      el.innerHTML = n>0 ? '<span class="num" style="color:'+NUMCOL[n]+'">'+n+'</span>' : "";
+    } else if(state.lost && mines.has(cell)){
+      el.className="cell mine"+(state.boom===cell?" boom":"");
+      el.innerHTML='<span class="mark">'+state.emoji[cell]+'</span>';
+    } else if(state.flag[cell]){
+      el.className="cell flag";
+      el.innerHTML='<span class="mark">🚩</span>';
+    } else {
+      el.className="cell covered";
+      el.innerHTML="";
+    }
+  });
+}
+function updateCount(){
+  let f=0; for(const x of state.flag) if(x) f++;
+  document.getElementById("flagCount").textContent=f;
+  document.getElementById("mineTotal").textContent=state.puz.M;
+}
+
+/* ---------- interaction ---------- */
+function onCell(cell,flagAction){
+  if(state.suppressClick){ state.suppressClick=false; return; } // swallow click synthesized after a long-press
+  if(state.won||state.lost) return;
+  if(!state.started) startTimer();
+  const flagging = flagAction || state.flagMode;
+  if(state.rev[cell]){ return; } // already open — nothing to do
+  if(flagging){ state.flag[cell]=!state.flag[cell]; paint(); updateCount(); return; }
+  if(state.flag[cell]) return; // don't dig a flagged tile
+  dig(cell);
+}
+// flood-reveal a tile and, if it's blank (0), its neighbours — mutates state.rev only.
+function floodOpen(cell){
+  const {N,num}=state.puz;
+  const s=[cell];
+  while(s.length){ const x=s.pop(); if(state.rev[x]||state.flag[x]) continue; state.rev[x]=true;
+    if(num[x]===0) for(const nb of nbrs(N,x)) if(!state.rev[nb]) s.push(nb); }
+}
+// reveal a tile; a blank (0) floods its neighbours. Digging a mine loses.
+function dig(cell){
+  const {mines}=state.puz;
+  if(mines.has(cell)){ state.boom=cell; lose(); return; }
+  floodOpen(cell); paint(); updateCount(); checkWin();
+}
+function checkWin(){
+  const {mines,N}=state.puz;
+  for(let c=0;c<N*N;c++) if(!mines.has(c) && !state.rev[c]) return; // some safe tile still covered
+  win();
+}
+function win(){
+  const N=state.puz.N;
+  state.won=true; stopTimer();
+  recordWin(N,state.elapsed);
+  renderStats();
+  document.getElementById("winCat").textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
+  document.getElementById("winTitle").textContent=WINPUNS[Math.floor(Math.random()*WINPUNS.length)];
+  document.getElementById("winMsg").textContent="You cleared the "+N+"×"+N+" board in "+fmt(state.elapsed)+".";
+  document.getElementById("winOverlay").classList.add("show");
+  confetti();
+}
+function lose(){
+  state.lost=true; stopTimer();
+  paint();
+  document.getElementById("loseMsg").textContent="You dug up a spooky thing and the cats scattered. Try the same board again!";
+  document.getElementById("loseOverlay").classList.add("show");
+}
+function confetti(){
+  for(let i=0;i<24;i++){
+    const s=document.createElement("div");
+    s.className="confetti"; s.textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
+    s.style.left=Math.random()*100+"vw";
+    s.style.animationDuration=(1.6+Math.random()*1.8)+"s";
+    s.style.animationDelay=(Math.random()*.5)+"s";
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),4000);
+  }
+}
+
+/* ---------- timer ---------- */
+function fmt(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function startTimer(){ state.started=true; state.timerId=setInterval(()=>{ state.elapsed++;
+  document.getElementById("clock").textContent=fmt(state.elapsed); },1000); }
+function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
+
+/* ---------- stats ---------- */
+function renderStats(){
+  const s=loadStore(); const el=document.getElementById("stats");
+  const sizes=Object.keys(s.best).map(Number).sort((a,b)=>a-b);
+  let html='<div class="statshead"><h2>Your stats</h2>'+
+    '<div class="chip">Solved <b>'+(s.solved||0)+'</b></div></div>';
+  if(sizes.length){
+    html+='<table><tr><th class="d">Board</th><th>Best time</th></tr>';
+    for(const N of sizes) html+='<tr><td class="d">'+N+'×'+N+'</td><td class="ok">'+fmt(s.best[N])+'</td></tr>';
+    html+='</table>';
+  } else html+='<p style="opacity:.6">No boards cleared yet — solve one to start your record!</p>';
+  el.innerHTML=html;
+}
+
+/* ---------- wire up ---------- */
+const sizeInput=document.getElementById("sizeInput");
+function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
+function newGame(){ const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+function setFlagMode(on){ state.flagMode=on;
+  const b=document.getElementById("flagBtn");
+  b.classList.toggle("on",on); b.textContent=on?"🚩 Flag":"🔨 Dig"; }
+// click the backdrop (outside the card) to dismiss any overlay
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
+document.getElementById("dateTag").textContent="Fresh spooky boards, any size "+MIN_N+"–"+MAX_N;
+document.getElementById("newBtn").onclick=newGame;
+document.getElementById("flagBtn").onclick=()=>setFlagMode(!state.flagMode);
+document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
+document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+document.getElementById("retryBtn").onclick=()=>{ document.getElementById("loseOverlay").classList.remove("show"); loadGame(state.N,state.seed); };
+loadGame(DEFAULT_N, todayStr()+"|meowsweeper"); // daily default board
+renderStats();
+
+/* ---------- self-check (console) ---------- */
+function runSelfTest(){
+  let ok=true;
+  for(let N=MIN_N;N<=MAX_N;N++){
+    const puz=generatePuzzle(N, makeRng("test|"+N));
+    if(!puz){ ok=false; console.log("  "+N+"×"+N+": no puzzle ❌"); continue; }
+    // start 3×3 must be mine-free (guarantees a blank opening flood)
+    for(const c of [puz.start,...nbrs(N,puz.start)]) if(puz.mines.has(c)) ok=false;
+    // numbers must match the mine layout
+    for(let c=0;c<N*N;c++){ if(puz.mines.has(c)) continue; let n=0;
+      for(const nb of nbrs(N,c)) if(puz.mines.has(nb)) n++; if(n!==puz.num[c]) ok=false; }
+    // re-solve: every board served must be fully deducible with no guessing
+    const sol=solve(N,puz.mines,puz.start);
+    if(sol.complete){ // and its safe cells match the real safe cells
+      for(let c=0;c<N*N;c++) if(!puz.mines.has(c) && sol.known[c]!==1) ok=false;
+    }
+    console.log("  "+N+"×"+N+": "+puz.M+" mines — "+(sol.complete?"logically solvable ✅":"fell back ⚠️"));
+    console.assert(ok,"Meowsweeper self-test failed for "+N);
+  }
+  console.log(ok?"Meowsweeper self-test passed ✅":"Meowsweeper self-test FAILED ❌");
+  return ok;
+}
+if(location.hostname==="localhost"||location.hash==="#selftest") runSelfTest();
+</script>
+</body>
+</html>

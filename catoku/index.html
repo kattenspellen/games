@@ -11,6 +11,8 @@
 <meta property="og:description" content="A free daily logic puzzle with cats. One cat per row, column, and color region; no two touch. No ads, no telemetry.">
 <meta property="og:url" content="https://kattenspellen.github.io/games/catoku/">
 <meta property="og:image" content="https://kattenspellen.github.io/games/assets/catoku-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://kattenspellen.github.io/games/assets/catoku-preview.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐱</text></svg>">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="theme-color" content="#f7a8c4">
@@ -539,6 +541,8 @@ function renderStats(){
 const sizeInput=document.getElementById("sizeInput");
 function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
 function newGame(){ const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+// click the backdrop (outside the card) to dismiss any overlay
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
 document.getElementById("dateTag").textContent="Fresh cat puzzles, any size 4–"+MAX_N;
 document.getElementById("newBtn").onclick=newGame;
 document.getElementById("undoBtn").onclick=undo;

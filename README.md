@@ -22,5 +22,11 @@ A "Train Tracks"-style logic puzzle. Lay one connected paw trail to match the ro
 
 <img src="assets/catwalk-demo.gif" alt="Catwalk demo" width="400">
 
+### 🙀 [Meowsweeper](https://kattenspellen.github.io/games/meowsweeper/)
+
+A "Minesweeper"-style logic puzzle. Clear every safe tile and flag the spooky things — no guessing, ever.
+
+<img src="assets/meowsweeper-demo.gif" alt="Meowsweeper demo" width="400">
+
 </div>
 
