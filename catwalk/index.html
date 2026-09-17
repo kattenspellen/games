@@ -43,11 +43,24 @@
   .tag { font-size: .85rem; opacity: .7; margin-bottom: 14px; }
 
   .bar {
-    display: flex; align-items: center; gap: 14px; margin: 4px 0 14px;
-    font-weight: 800; font-size: 1.05rem;
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 10px 14px; margin: 4px 0 14px; font-weight: 800; font-size: 1.05rem;
   }
   .bar .clock { font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
     background: var(--panel); padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); }
+  .clock.ahead { color: #2fa360; }
+  .clock.behind { color: #e5484d; }
+  .challenge {
+    padding: 6px 14px; border-radius: 12px;
+    font-weight: 800; font-size: .92rem; background: var(--panel);
+    box-shadow: 0 0 0 2px var(--accent-2) inset, var(--shadow);
+  }
+  .challenge.bad { box-shadow: 0 0 0 2px #e5484d inset, var(--shadow); color: #e5484d; }
+  .sharechip { background: var(--accent-2); color: #fff; border: none; cursor: pointer;
+    font-family: inherit; font-weight: 800; font-size: 1rem; padding: 6px 12px;
+    border-radius: 12px; box-shadow: var(--shadow); transition: transform .12s; }
+  .sharechip:hover { transform: translateY(-2px); }
+  .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
 
   #board {
     display: grid;
@@ -148,6 +161,8 @@
   <div class="bar">
     <div>🐾 <span id="pawCount">0</span>/<span id="pawTotal">0</span></div>
     <div class="clock" id="clock">0:00</div>
+    <div id="challenge" class="challenge" style="display:none"></div>
+    <button id="shareChip" class="sharechip" title="Copy challenge link" style="display:none">🔗</button>
   </div>
 
   <div id="board"></div>
@@ -180,7 +195,10 @@
       <div style="font-size:3rem" id="winCat">😻</div>
       <h2 id="winTitle">Purrfect!</h2>
       <p style="text-align:center" id="winMsg"></p>
-      <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+      <div class="winbtns">
+        <button class="btn" id="shareBtn">🔗 Copy challenge</button>
+        <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+      </div>
     </div>
   </div>
 
@@ -353,7 +371,7 @@ function recordWin(N,time){
 const puzzleCache={};
 let seedCounter=0;
 const state={ N:DEFAULT_N, seed:null, puz:null, grid:null, locked:null,
-  started:false, elapsed:0, timerId:null, won:false, undo:[] };
+  started:false, elapsed:0, timerId:null, won:false, undo:[], challenge:null };
 
 function puzzleFor(N,seed){
   if(!puzzleCache[seed]) puzzleCache[seed]=generatePuzzle(N, makeRng(seed));
@@ -375,7 +393,8 @@ function loadGame(N,seed){
     state.grid[ep.r][ep.c]=maskToVal(m); state.locked[ep.r][ep.c]=true;
   }
   state.started=false; state.elapsed=0; state.won=false; state.undo=[];
-  document.getElementById("clock").textContent="0:00";
+  document.getElementById("clock").textContent="0:00"; updateChallengeUI();
+  document.getElementById("shareChip").style.display="none";
   renderBoard(); updateCount(); updateUndo();
 }
 function clueBtn(kind,i){ // tap a row/col number to ✕ the rest of that line
@@ -497,7 +516,12 @@ function win(){
   renderStats();
   document.getElementById("winCat").textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
   document.getElementById("winTitle").textContent=WINPUNS[Math.floor(Math.random()*WINPUNS.length)];
-  document.getElementById("winMsg").textContent="You laid the "+N+"×"+N+" paw trail in "+fmt(state.elapsed)+".";
+  let msg="You laid the "+N+"×"+N+" paw trail in "+fmt(state.elapsed)+".";
+  if(state.challenge) msg += state.elapsed<=state.challenge.time
+    ? " 🏆 You beat the "+fmt(state.challenge.time)+" challenge!"
+    : " 🐾 The target was "+fmt(state.challenge.time)+" — try again!";
+  document.getElementById("winMsg").textContent=msg;
+  document.getElementById("shareChip").style.display="";
   document.getElementById("winOverlay").classList.add("show");
   confetti();
 }
@@ -516,7 +540,7 @@ function confetti(){
 /* ---------- timer ---------- */
 function fmt(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
 function startTimer(){ state.started=true; state.timerId=setInterval(()=>{ state.elapsed++;
-  document.getElementById("clock").textContent=fmt(state.elapsed); },1000); }
+  document.getElementById("clock").textContent=fmt(state.elapsed); updateChallengeUI(); },1000); }
 function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
 
 /* ---------- stats ---------- */
@@ -536,7 +560,36 @@ function renderStats(){
 /* ---------- wire up ---------- */
 const sizeInput=document.getElementById("sizeInput");
 function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
-function newGame(){ const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+
+/* ---------- challenge links ---------- */
+// Shareable board: the hash carries only N ~ seed ~ challenger-time. The receiver
+// re-runs the generator (never the solution) — same seed ⇒ same board anywhere.
+function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+"~"+state.elapsed; }
+function parseChallenge(){
+  const m=location.hash.match(/^#c=(\d+)~([^~]+)~(\d+)$/); if(!m) return null;
+  const N=+m[1], seed=decodeURIComponent(m[2]), time=+m[3];
+  if(N<MIN_N||N>MAX_N||!seed||!isFinite(time)||time<0) return null; // out of range / unparseable ⇒ decline
+  return {N,seed,time};
+}
+function copyChallenge(btn,copied,restore){
+  copied=copied||"✓ Copied!"; restore=restore||"🔗 Copy challenge";
+  const link=buildChallengeLink();
+  const ok=()=>{ btn.textContent=copied; setTimeout(()=>{ btn.textContent=restore; },1600); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok,()=>prompt("Copy this challenge link:",link));
+  else prompt("Copy this challenge link:",link);
+}
+function showChallenge(){ const el=document.getElementById("challenge");
+  el.className="challenge"; el.textContent="🏁 Beat "+fmt(state.challenge.time); el.style.display=""; }
+function showBadLink(){ const el=document.getElementById("challenge");
+  el.className="challenge bad"; el.textContent="⚠️ Bad link — daily board"; el.style.display=""; }
+function clearChallenge(){ state.challenge=null;
+  document.getElementById("challenge").style.display="none";
+  if(location.hash) history.replaceState(null,"",location.pathname); updateChallengeUI(); }
+function updateChallengeUI(){ const clk=document.getElementById("clock");
+  clk.classList.toggle("ahead", !!state.challenge && state.elapsed<=state.challenge.time);
+  clk.classList.toggle("behind", !!state.challenge && state.elapsed>state.challenge.time); }
+
 // click the backdrop (outside the card) to dismiss any overlay
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
 document.getElementById("dateTag").textContent="Fresh cat-paw trails, any size 4–"+MAX_N;
@@ -545,7 +598,11 @@ document.getElementById("undoBtn").onclick=undo;
 document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
-loadGame(DEFAULT_N, todayStr()+"|catwalk"); // daily default board
+document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
+document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
+const incoming=parseChallenge();
+if(incoming){ state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
+else { loadGame(DEFAULT_N, todayStr()+"|catwalk"); if(location.hash.indexOf("#c=")===0) showBadLink(); } // daily default board
 renderStats();
 
 /* ---------- self-check (console) ---------- */
