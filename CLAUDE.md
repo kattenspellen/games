@@ -156,8 +156,9 @@ each one distinct. Split accordingly.
 **Per-game identity — vary exactly these:**
 
 - **Signature palette**: the game picks its own `--accent` and `--accent-2`.
-  `--accent` is the signature (in-game headings/highlights, landing-tile `<h2>`,
-  `theme-color` meta); `--accent-2` is a *distinct second hue* driving the
+  `--accent` is the signature (in-game headings/highlights, `theme-color`
+  meta; the landing-tile `<h2>` takes one of the game's hues, darkened as
+  needed to read on white); `--accent-2` is a *distinct second hue* driving the
   primary button and other secondary highlights — so every game reads as a
   two-color scheme, never monochrome. The two accents may be complementary
   (Catoku pink `#f7a8c4` + blue `#3f8fd6`) or adjacent on the wheel (Catwalk

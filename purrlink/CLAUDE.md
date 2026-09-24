@@ -70,7 +70,8 @@ generator's solution passes it. Change a rule in all of them or they disagree.
 
 Peach `--accent:#f4a582` is the signature (`theme-color`, page gradient),
 and yarn pink `--accent-2:#d81b60` — the Noto 🧶's own shade — drives the
-primary button, share chip, and stats; the landing-tile `<h2>` uses it too.
+primary button, share chip, and stats. The landing-tile `<h2>` is a dark
+plum `#6b3fa0`, a deep shade of the gradient's pale plum.
 The board frame is a pale pink `#f8d3e1`; size input and stats chips a paler
 pink `#fce4ee`. The page gradient runs pale peach `#fdf0e8` → pale plum
 `#f3edfb` — Catoku-level lightness so the colourful grid isn't overwhelming,
