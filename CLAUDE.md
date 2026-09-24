@@ -9,6 +9,7 @@ Games:
 - **Catoku** (`catoku/`) — a "Queens"-style puzzle. See `catoku/CLAUDE.md`.
 - **Catwalk** (`catwalk/`) — a "Train Tracks"-style puzzle. See `catwalk/CLAUDE.md`.
 - **Meowsweeper** (`meowsweeper/`) — a "Minesweeper"-style puzzle. See `meowsweeper/CLAUDE.md`.
+- **Purrlink** (`purrlink/`) — a "Numberlink"-style puzzle. See `purrlink/CLAUDE.md`.
 
 Every game is built to the shared criteria below, so each is solid on its own
 and obviously part of the same family. Conventions that are strictly one game's
@@ -53,7 +54,7 @@ with the clock tinting green/red against the target; an **invalid or
 out-of-range** hash declines with a short notice and falls back to the daily
 board — never fabricate a board. Times are self-reported and unverified (fine
 for a friendly race); no version pinning. Same encode/parse/validate helpers in
-all three games — keep them identical.
+every game — keep them identical.
 
 ## Determinism & fairness
 
@@ -65,8 +66,12 @@ For any game with generated content:
 - **Daily instance** keyed on the date (`"YYYY-MM-DD|…"`), identical for
   everyone that day; **fresh instances** from a distinct seed pattern.
 - **Logically solvable — the hard invariant.** Every served instance must be
-  solvable by pure logical deduction, no guessing and no backtracking.
-  Generation must *prove* it with a deductive solver (human-style inference
+  solvable by pure logical deduction — at every point the next move can be
+  *proven*, never guessed. Proof by contradiction counts as deduction: assume
+  one move, play out its forced consequences under the direct rules, and if the
+  board breaks, the opposite is proven. Keep it to one level (the consequences
+  of an assumption use direct rules only, never a nested assumption); search
+  and trial-and-error over branches are out. Generation must *prove* it with a deductive solver (human-style inference
   under the same rules the player plays) before serving — never assume it. An
   instance that isn't fully deducible is a bug, not a hard puzzle; regenerate or
   fail loudly rather than serve it.

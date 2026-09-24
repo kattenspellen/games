@@ -28,5 +28,11 @@ A "Minesweeper"-style logic puzzle. Clear every safe tile and flag the spooky th
 
 <img src="assets/meowsweeper-demo.gif" alt="Meowsweeper demo" width="400">
 
+### 🧶 [Purrlink](https://kattenspellen.github.io/games/purrlink/)
+
+A "Numberlink"-style logic puzzle. Connect each cat to its ball of yarn — no crossings, fill every square.
+
+<img src="assets/purrlink-demo.gif" alt="Purrlink demo" width="400">
+
 </div>
 
