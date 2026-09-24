@@ -118,7 +118,12 @@ each one distinct. Split accordingly.
 
 **Family constants — never vary:**
 
-- **Font**: `"Nunito","Segoe UI",system-ui,-apple-system,sans-serif`.
+- **Font**: `"Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif`.
+- **Emoji**: Google's Noto, identical on every device — `assets/noto-emoji.woff2`
+  is Noto Color Emoji subset to the emoji the pages use (COLRv1 for
+  Chrome/Firefox + OT-SVG for Safari in one file), first in the font stack.
+  Added an emoji? Rerun `uv run assets/build-emoji-font.py`, or it renders
+  as the device's native emoji.
 - **Background**: a soft `linear-gradient(160deg, …)` from cream `#fdf6f0` to a
   pale tint of the game's accent. The cream start and the softness are fixed;
   the second stop is per-game (see below).

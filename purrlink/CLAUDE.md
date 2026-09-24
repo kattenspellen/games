@@ -69,10 +69,10 @@ generator's solution passes it. Change a rule in all of them or they disagree.
 ## Signature palette
 
 Peach `--accent:#f4a582` is the signature (`theme-color`, page gradient),
-and plum `--accent-2:#8a5fbf` — complementary — drives the primary button,
-share chip, and stats. Google's 🧶 is blue, which the peach sets off; the
-landing-tile `<h2>` (`#3a7bd5`) picks up that yarn blue. The board frame is a
-light plum `#e2d4f2`; size input and stats chips a paler plum `#efe6f8`. The page gradient runs pale peach `#fdf0e8` → pale plum
+and yarn pink `--accent-2:#d81b60` — the Noto 🧶's own shade — drives the
+primary button, share chip, and stats; the landing-tile `<h2>` uses it too.
+The board frame is a pale pink `#f8d3e1`; size input and stats chips a paler
+pink `#fce4ee`. The page gradient runs pale peach `#fdf0e8` → pale plum
 `#f3edfb` — Catoku-level lightness so the colourful grid isn't overwhelming,
 and a deliberate exception to the family's fixed cream start so both accents
 show; the overlay scrim is a dark peach `rgba(90,55,40,.4)`.
@@ -81,8 +81,7 @@ Strands use 16 `COLORS`, all pairs ΔE76 ≥ 22 (same metric as Catoku's regions
 the last four (olive, sage, lavender, mauve) were added for 10×10.
 Covered cells get a 22% tint of their strand colour. Endpoints are Catwalk-style
 light tiles — a 40% tint ringed in the solid strand colour, bars showing
-through — holding the emoji (white drop-shadow halo so the blue 🧶 reads on
-blue). Each endpoint also carries a small white pair-number badge (`.bd`, top-left)
+through — holding the emoji. Each endpoint also carries a small white pair-number badge (`.bd`, top-left)
 — at up to 16 pairs colour alone isn't enough, especially for colour-blind
 players. A linked pair's cat turns 😻.
 

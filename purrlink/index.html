@@ -23,16 +23,18 @@
     --ink: #5b4a52;
     --panel: #ffffff;
     --accent: #f4a582;   /* peach — signature: headings, board frame, theme-color */
-    --accent-2: #8a5fbf; /* plum — complementary 2nd hue: primary button, share chip, stats */
+    --accent-2: #d81b60; /* yarn pink (Noto 🧶) — 2nd hue: primary button, share chip, stats */
     --shadow: 0 6px 20px rgba(120,90,110,.15);
     --n: 6;
   }
+  /* Google's Noto emoji, subset to the ones we use, so cats look the same on every device */
+  @font-face { font-family: "Noto Color Emoji"; src: url("../assets/noto-emoji.woff2") format("woff2"); }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
     background: linear-gradient(160deg,#fdf0e8,#f3edfb);
     color: var(--ink);
-    font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    font-family: "Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
     min-height: 100%;
   }
   body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
@@ -65,7 +67,7 @@
   #board {
     display: grid;
     grid-template-columns: repeat(var(--n), var(--cell));
-    gap: 3px; background: #e2d4f2; padding: 10px; border-radius: 14px;
+    gap: 3px; background: #f8d3e1; padding: 10px; border-radius: 14px;
     box-shadow: var(--shadow);
     touch-action: none; user-select: none; /* drag draws strands — no scroll/zoom on the board */
     --cell: clamp(28px, calc((94vw - 40px)/var(--n)), 64px);
@@ -97,7 +99,6 @@
     font-size: calc(var(--cell) * .5); line-height: 1; }
   .ep .bd { position: absolute; top: 1px; left: 2px; font-size: max(9px, calc(var(--cell) * .24)); font-weight: 900;
     line-height: 1; padding: 1px 3px; border-radius: 999px; background: #fff; color: var(--ink); } /* pair number: colour isn't the only cue */
-  .ep .em { filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1px #fff); } /* halo: the blue 🧶 stays legible on blue tiles */
   .ep.done { animation: pop .3s cubic-bezier(.3,1.6,.5,1); }
   @keyframes pop { 0%{transform:scale(.2) rotate(-18deg);opacity:0;} 60%{transform:scale(1.18) rotate(6deg);} 100%{transform:scale(1) rotate(0);} }
 
@@ -119,7 +120,7 @@
     border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
   .stats .statshead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
   .stats .statshead h2 { margin: 0; font-size: 1.1rem; }
-  .stats .chip { background: #efe6f8; border-radius: 10px; padding: 6px 12px; font-size: .85rem; font-weight: 800; }
+  .stats .chip { background: #fce4ee; border-radius: 10px; padding: 6px 12px; font-size: .85rem; font-weight: 800; }
   .stats .chip b { color: var(--accent-2); }
   table { width: 100%; border-collapse: collapse; font-size: .82rem; }
   th, td { padding: 5px 4px; text-align: center; }
@@ -160,7 +161,7 @@
   <div class="controls">
     <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
       <input id="sizeInput" type="number" min="5" max="10" value="6"
-        style="width:3em;border:none;background:#efe6f8;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
+        style="width:3em;border:none;background:#fce4ee;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
     </label>
     <button class="btn primary" id="newBtn">🎲 New</button>
     <button class="btn" id="undoBtn">↶ Undo</button>
@@ -428,7 +429,7 @@ function paint(){
     if(k>=0){ for(let d=0;d<4;d++) if(links[i]&(1<<d)) h+=bar("nesw"[d]);
       if(!ep) h+='<div class="dot" style="background:'+col+'"></div>'; }
     if(ep){ const [pk,kind]=ep, full=linked(state.puz,pk,state.paths[pk]);
-      h+='<div class="ep'+(full?' done':'')+'" style="box-shadow:0 0 0 2px '+colors[pk]+' inset"><span class="bd">'+(pk+1)+'</span><span class="em">'+(kind?"🧶":full?"😻":"🐱")+'</span></div>'; }
+      h+='<div class="ep'+(full?' done':'')+'" style="box-shadow:0 0 0 2px '+colors[pk]+' inset"><span class="bd">'+(pk+1)+'</span>'+(kind?"🧶":full?"😻":"🐱")+'</div>'; }
     cell.style.background = ep ? "color-mix(in srgb,"+colors[ep[0]]+" 40%,#fff)" : k>=0 ? "color-mix(in srgb,"+col+" 22%,#fff)" : "";
     if(cell._h!==h){ cell.innerHTML=h; cell._h=h; } // untouched cells keep their DOM (no replayed pops)
   });

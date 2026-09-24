@@ -27,12 +27,14 @@
     --shadow: 0 6px 20px rgba(120,90,110,.15);
     --n: 6;
   }
+  /* Google's Noto emoji, subset to the ones we use, so cats look the same on every device */
+  @font-face { font-family: "Noto Color Emoji"; src: url("../assets/noto-emoji.woff2") format("woff2"); }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
     background: linear-gradient(160deg,#fdf6f0,#e8f4e6);
     color: var(--ink);
-    font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    font-family: "Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
     min-height: 100%;
   }
   body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
