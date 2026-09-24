@@ -43,7 +43,7 @@ timer → stats → wire-up → console self-test.
 - **The player digs and flags** the same board the solver reasoned about.
   `dig` floods zero-regions exactly like the solver; a flag is a pure marker.
   Digging a mine loses (a perfect, no-guess player never has to).
-- **Opening region pre-revealed on load.** `loadGame` calls `floodOpen(start)`
+- **Opening region pre-revealed on load.** `setupGame` calls `floodOpen(start)`
   before rendering, so the board loads showing the same opening region + numbers
   the solver starts from — no first-dig death, and the served board matches the
   no-guess proof from tile one. Generation also rejects boards whose opening

@@ -70,6 +70,15 @@
     touch-action: manipulation;
     --cell: clamp(24px, calc((94vw - 48px)/(var(--n) + 1)), 62px);
   }
+  /* loading: generation blocks the page, so a spinning emoji is painted first; it fades in late
+     (transform/opacity animate off the main thread) so fast boards never flash it */
+  #board.busy { position: relative; pointer-events: none; }
+  #board.busy::after { content: "🐾"; position: absolute; left: 50%; top: 50%; width: 64px; height: 64px;
+    margin: -32px 0 0 -32px; display: flex; align-items: center; justify-content: center; font-size: 38px;
+    background: var(--panel); border-radius: 50%; box-shadow: var(--shadow); z-index: 5;
+    opacity: 0; animation: busyin .2s .15s forwards, busyspin 1s linear infinite; }
+  @keyframes busyin { to { opacity: 1; } }
+  @keyframes busyspin { to { transform: rotate(360deg); } }
   .clue {
     display: flex; align-items: center; justify-content: center;
     font-weight: 900; color: #5f8a63; font-size: calc(var(--cell) * .44);
@@ -380,7 +389,15 @@ function puzzleFor(N,seed){
 
 /* ---------- render ---------- */
 const boardEl=document.getElementById("board");
+// big boards can take a while to generate: paint the spinner, then build. A newer load
+// cancels a pending one; cached boards load at once.
+let loadTok=0;
 function loadGame(N,seed){
+  const tok=++loadTok, go=()=>{ if(tok===loadTok){ setupGame(N,seed); boardEl.classList.remove("busy"); } };
+  if(puzzleCache[seed]) return go();
+  boardEl.classList.add("busy"); requestAnimationFrame(()=>setTimeout(go));
+}
+function setupGame(N,seed){
   stopTimer();
   state.N=N; state.seed=seed; state.puz=puzzleFor(N,seed);
   N=state.puz.N;

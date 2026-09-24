@@ -133,6 +133,11 @@ each one distinct. Split accordingly.
   subtitle header, chips for clock/stats, and `.overlay` modals (rules/win/lose
   — a centered `.card` on the accent-tinted scrim, dismissable by clicking the
   backdrop). Reuse these; don't invent parallels.
+- **Loading spinner**: `loadGame` adds `#board.busy`, then generates the board on
+  the next frame (`setupGame`) so the browser gets to draw the spinner first. The spinner is the game's emoji
+  spinning in a white disc and fades in after 150ms, so boards that load quickly
+  never flash it. Cached boards skip it, and a newer load cancels a pending one.
+  The wrapper and CSS are identical in every game except the emoji; keep them identical.
 - **Landing tile**: one `a.card` per game — emoji + `<h2>` name + one-line
   description.
 - **Mood**: soft, playful, pastel. Cats and emoji, never harsh.
