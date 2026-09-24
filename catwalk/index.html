@@ -27,12 +27,14 @@
     --shadow: 0 6px 20px rgba(120,90,110,.15);
     --n: 6;
   }
+  /* Google's Noto emoji, subset to the ones we use, so cats look the same on every device */
+  @font-face { font-family: "Noto Color Emoji"; src: url("../assets/noto-emoji.woff2") format("woff2"); }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
     background: linear-gradient(160deg,#fdf6f0,#e8f4e6);
     color: var(--ink);
-    font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    font-family: "Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
     min-height: 100%;
   }
   body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
@@ -60,6 +62,10 @@
     font-family: inherit; font-weight: 800; font-size: 1rem; padding: 6px 12px;
     border-radius: 12px; box-shadow: var(--shadow); transition: transform .12s; }
   .sharechip:hover { transform: translateY(-2px); }
+  .back { align-self: flex-start; width: 40px; height: 40px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; background: var(--panel); color: var(--ink);
+    text-decoration: none; font-weight: 900; font-size: 1.2rem; box-shadow: var(--shadow); transition: transform .12s; }
+  .back:hover { transform: translateY(-2px); }
   .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
 
   #board {
@@ -70,6 +76,15 @@
     touch-action: manipulation;
     --cell: clamp(24px, calc((94vw - 48px)/(var(--n) + 1)), 62px);
   }
+  /* loading: generation blocks the page, so a spinning emoji is painted first; it fades in late
+     (transform/opacity animate off the main thread) so fast boards never flash it */
+  #board.busy { position: relative; pointer-events: none; }
+  #board.busy::after { content: "🐾"; position: absolute; left: 50%; top: 50%; width: 64px; height: 64px;
+    margin: -32px 0 0 -32px; display: flex; align-items: center; justify-content: center; font-size: 38px;
+    background: var(--panel); border-radius: 50%; box-shadow: var(--shadow); z-index: 5;
+    opacity: 0; animation: busyin .2s .15s forwards, busyspin 1s linear infinite; }
+  @keyframes busyin { to { opacity: 1; } }
+  @keyframes busyspin { to { transform: rotate(360deg); } }
   .clue {
     display: flex; align-items: center; justify-content: center;
     font-weight: 900; color: #5f8a63; font-size: calc(var(--cell) * .44);
@@ -155,6 +170,7 @@
 </style>
 </head>
 <body>
+  <a class="back" href="../index.html" title="All games" aria-label="All games">←</a>
   <h1>Catwalk</h1>
   <div class="tag" id="dateTag"></div>
 
@@ -162,7 +178,7 @@
     <div>🐾 <span id="pawCount">0</span>/<span id="pawTotal">0</span></div>
     <div class="clock" id="clock">0:00</div>
     <div id="challenge" class="challenge" style="display:none"></div>
-    <button id="shareChip" class="sharechip" title="Copy challenge link" style="display:none">🔗</button>
+    <button id="shareChip" class="sharechip" title="Copy a link to this board">🔗</button>
   </div>
 
   <div id="board"></div>
@@ -270,7 +286,7 @@ function pathData(N,pp){
   return { tracks, rowCounts, colCounts, solEdges };
 }
 
-// human-style deductive solver: constraint propagation only, never guessing.
+// human-style deductive solver: constraint propagation only.
 // edges are ON/OFF/unknown; every cell ends at degree 0 (empty) or 2 (paw).
 // returns {dead, complete, tracks, state}; complete && !dead ⇒ fully deducible.
 // Rules: (1) degree — a paw needs exactly 2 links, so force/forbid edges once a
@@ -380,7 +396,15 @@ function puzzleFor(N,seed){
 
 /* ---------- render ---------- */
 const boardEl=document.getElementById("board");
+// big boards can take a while to generate: paint the spinner, then build. A newer load
+// cancels a pending one; cached boards load at once.
+let loadTok=0;
 function loadGame(N,seed){
+  const tok=++loadTok, go=()=>{ if(tok===loadTok){ setupGame(N,seed); boardEl.classList.remove("busy"); } };
+  if(puzzleCache[seed]) return go();
+  boardEl.classList.add("busy"); requestAnimationFrame(()=>setTimeout(go));
+}
+function setupGame(N,seed){
   stopTimer();
   state.N=N; state.seed=seed; state.puz=puzzleFor(N,seed);
   N=state.puz.N;
@@ -394,7 +418,6 @@ function loadGame(N,seed){
   }
   state.started=false; state.elapsed=0; state.won=false; state.undo=[];
   document.getElementById("clock").textContent="0:00"; updateChallengeUI();
-  document.getElementById("shareChip").style.display="none";
   renderBoard(); updateCount(); updateUndo();
 }
 function clueBtn(kind,i){ // tap a row/col number to ✕ the rest of that line
@@ -521,7 +544,6 @@ function win(){
     ? " 🏆 You beat the "+fmt(state.challenge.time)+" challenge!"
     : " 🐾 The target was "+fmt(state.challenge.time)+" — try again!";
   document.getElementById("winMsg").textContent=msg;
-  document.getElementById("shareChip").style.display="";
   document.getElementById("winOverlay").classList.add("show");
   confetti();
 }
@@ -563,13 +585,13 @@ function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN
 function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
 
 /* ---------- challenge links ---------- */
-// Shareable board: the hash carries only N ~ seed ~ challenger-time. The receiver
+// Shareable board: the hash carries only N ~ seed (~ challenger-time, once solved). The receiver
 // re-runs the generator (never the solution) — same seed ⇒ same board anywhere.
-function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+"~"+state.elapsed; }
+function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+(state.won?"~"+state.elapsed:""); }
 function parseChallenge(){
-  const m=location.hash.match(/^#c=(\d+)~([^~]+)~(\d+)$/); if(!m) return null;
-  const N=+m[1], seed=decodeURIComponent(m[2]), time=+m[3];
-  if(N<MIN_N||N>MAX_N||!seed||!isFinite(time)||time<0) return null; // out of range / unparseable ⇒ decline
+  const m=location.hash.match(/^#c=(\d+)~([^~]+)(?:~(\d+))?$/); if(!m) return null;
+  const N=+m[1], seed=decodeURIComponent(m[2]), time=m[3]===undefined?null:+m[3];
+  if(N<MIN_N||N>MAX_N||!seed||(time!==null&&!isFinite(time))) return null; // out of range / unparseable ⇒ decline
   return {N,seed,time};
 }
 function copyChallenge(btn,copied,restore){
@@ -580,7 +602,7 @@ function copyChallenge(btn,copied,restore){
   else prompt("Copy this challenge link:",link);
 }
 function showChallenge(){ const el=document.getElementById("challenge");
-  el.className="challenge"; el.textContent="🏁 Beat "+fmt(state.challenge.time); el.style.display=""; }
+  el.className="challenge"; el.textContent=state.challenge?"🏁 Beat "+fmt(state.challenge.time):"🔗 Shared board"; el.style.display=""; }
 function showBadLink(){ const el=document.getElementById("challenge");
   el.className="challenge bad"; el.textContent="⚠️ Bad link — daily board"; el.style.display=""; }
 function clearChallenge(){ state.challenge=null;
@@ -601,7 +623,7 @@ document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOv
 document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
 document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
 const incoming=parseChallenge();
-if(incoming){ state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
+if(incoming){ if(incoming.time!==null) state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
 else { loadGame(DEFAULT_N, todayStr()+"|catwalk"); if(location.hash.indexOf("#c=")===0) showBadLink(); } // daily default board
 renderStats();
 

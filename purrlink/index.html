@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Purrlink — a &quot;Numberlink&quot;-style cat logic puzzle</title>
+<meta name="description" content="Purrlink is a free daily logic puzzle: connect each cat to its ball of yarn so no strands cross and every square is filled. Deterministic and solvable by pure deduction. No ads, no telemetry.">
+<link rel="canonical" href="https://kattenspellen.github.io/games/purrlink/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Purrlink — a &quot;Numberlink&quot;-style cat logic puzzle">
+<meta property="og:description" content="A free daily logic puzzle with cats. Connect each cat to its ball of yarn — no crossings, fill every square. No ads, no telemetry.">
+<meta property="og:url" content="https://kattenspellen.github.io/games/purrlink/">
+<meta property="og:image" content="https://kattenspellen.github.io/games/assets/purrlink-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://kattenspellen.github.io/games/assets/purrlink-preview.png">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧶</text></svg>">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<meta name="theme-color" content="#f4a582">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg: #fdf6f0;
+    --ink: #5b4a52;
+    --panel: #ffffff;
+    --accent: #f4a582;   /* peach — signature: headings, board frame, theme-color */
+    --accent-2: #d81b60; /* yarn pink (Noto 🧶) — 2nd hue: primary button, share chip, stats */
+    --shadow: 0 6px 20px rgba(120,90,110,.15);
+    --n: 6;
+  }
+  /* Google's Noto emoji, subset to the ones we use, so cats look the same on every device */
+  @font-face { font-family: "Noto Color Emoji"; src: url("../assets/noto-emoji.woff2") format("woff2"); }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: linear-gradient(160deg,#fdf0e8,#f3edfb);
+    color: var(--ink);
+    font-family: "Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    min-height: 100%;
+  }
+  body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
+  h1 {
+    font-size: 2.2rem; margin: 8px 0 2px; letter-spacing: 1px;
+    font-weight: 900; color: var(--ink);
+  }
+  .tag { font-size: .85rem; opacity: .7; margin-bottom: 14px; }
+
+  .bar {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 10px 14px; margin: 4px 0 14px; font-weight: 800; font-size: 1.05rem;
+  }
+  .bar .clock { font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
+    background: var(--panel); padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); }
+  .clock.ahead { color: #2fa360; }
+  .clock.behind { color: #e5484d; }
+  .challenge {
+    padding: 6px 14px; border-radius: 12px;
+    font-weight: 800; font-size: .92rem; background: var(--panel);
+    box-shadow: 0 0 0 2px var(--accent-2) inset, var(--shadow);
+  }
+  .challenge.bad { box-shadow: 0 0 0 2px #e5484d inset, var(--shadow); color: #e5484d; }
+  .sharechip { background: var(--accent-2); color: #fff; border: none; cursor: pointer;
+    font-family: inherit; font-weight: 800; font-size: 1rem; padding: 6px 12px;
+    border-radius: 12px; box-shadow: var(--shadow); transition: transform .12s; }
+  .sharechip:hover { transform: translateY(-2px); }
+  .back { align-self: flex-start; width: 40px; height: 40px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; background: var(--panel); color: var(--ink);
+    text-decoration: none; font-weight: 900; font-size: 1.2rem; box-shadow: var(--shadow); transition: transform .12s; }
+  .back:hover { transform: translateY(-2px); }
+  .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(var(--n), var(--cell));
+    gap: 3px; background: #f8d3e1; padding: 10px; border-radius: 14px;
+    box-shadow: var(--shadow);
+    touch-action: none; user-select: none; /* drag draws strands — no scroll/zoom on the board */
+    --cell: clamp(28px, calc((94vw - 40px)/var(--n)), 64px);
+  }
+  /* loading: generation blocks the page, so a spinning emoji is painted first; it fades in late
+     (transform/opacity animate off the main thread) so fast boards never flash it */
+  #board.busy { position: relative; pointer-events: none; }
+  #board.busy::after { content: "🧶"; position: absolute; left: 50%; top: 50%; width: 64px; height: 64px;
+    margin: -32px 0 0 -32px; display: flex; align-items: center; justify-content: center; font-size: 38px;
+    background: var(--panel); border-radius: 50%; box-shadow: var(--shadow); z-index: 5;
+    opacity: 0; animation: busyin .2s .15s forwards, busyspin 1s linear infinite; }
+  @keyframes busyin { to { opacity: 1; } }
+  @keyframes busyspin { to { transform: rotate(360deg); } }
+  .cell {
+    width: var(--cell); height: var(--cell);
+    border-radius: 8px; cursor: pointer; background: #fff;
+    position: relative; transition: background .15s;
+  }
+  /* strand: a bar from the cell centre out to each linked side (reaching into the gap) + a round joint */
+  .link { position: absolute; z-index: 1; }
+  .link.n { left: 38%; width: 24%; top: -2px; height: calc(50% + 2px); }
+  .link.s { left: 38%; width: 24%; bottom: -2px; height: calc(50% + 2px); }
+  .link.e { top: 38%; height: 24%; right: -2px; width: calc(50% + 2px); }
+  .link.w { top: 38%; height: 24%; left: -2px; width: calc(50% + 2px); }
+  .dot { position: absolute; z-index: 1; left: 38%; top: 38%; width: 24%; height: 24%; border-radius: 50%; }
+  /* endpoints: a light-tint tile (Catwalk-style) ringed in the strand colour, holding the cat or its yarn */
+  .ep { position: absolute; inset: 0; z-index: 2; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--cell) * .5); line-height: 1; }
+  .ep .bd { position: absolute; top: 1px; left: 2px; font-size: max(9px, calc(var(--cell) * .24)); font-weight: 900;
+    line-height: 1; padding: 1px 3px; border-radius: 999px; background: #fff; color: var(--ink); } /* pair number: colour isn't the only cue */
+  .ep.done { animation: pop .3s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { 0%{transform:scale(.2) rotate(-18deg);opacity:0;} 60%{transform:scale(1.18) rotate(6deg);} 100%{transform:scale(1) rotate(0);} }
+
+  .controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 800; font-size: .9rem;
+    padding: 9px 16px; border-radius: 12px; background: var(--panel); color: var(--ink);
+    box-shadow: var(--shadow); transition: transform .12s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: scale(.95); }
+  .btn.primary { background: var(--accent-2); color: #fff; }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+
+  .hint { font-size: .8rem; opacity: .65; margin-top: 12px; text-align: center; max-width: 340px; }
+
+  /* Stats */
+  .stats { margin-top: 26px; width: 100%; max-width: 420px; background: var(--panel);
+    border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .stats .statshead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .stats .statshead h2 { margin: 0; font-size: 1.1rem; }
+  .stats .chip { background: #fce4ee; border-radius: 10px; padding: 6px 12px; font-size: .85rem; font-weight: 800; }
+  .stats .chip b { color: var(--accent-2); }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th, td { padding: 5px 4px; text-align: center; }
+  th { opacity: .6; font-weight: 800; }
+  td.d { text-align: left; opacity: .8; }
+  .ok { color: #4caf50; font-weight: 800; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(90,55,40,.4);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .card {
+    background: var(--panel); border-radius: 20px; padding: 26px; max-width: 360px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); text-align: center; animation: pop .3s ease;
+  }
+  .card h2 { margin: 6px 0 10px; }
+  .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
+    animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
+</style>
+</head>
+<body>
+  <a class="back" href="../index.html" title="All games" aria-label="All games">←</a>
+  <h1>Purrlink</h1>
+  <div class="tag" id="dateTag"></div>
+
+  <div class="bar">
+    <div>🧶 <span id="linkCount">0</span>/<span id="linkTotal">0</span></div>
+    <div class="clock" id="clock">0:00</div>
+    <div id="challenge" class="challenge" style="display:none"></div>
+    <button id="shareChip" class="sharechip" title="Copy a link to this board">🔗</button>
+  </div>
+
+  <div id="board"></div>
+
+  <div class="controls">
+    <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
+      <input id="sizeInput" type="number" min="5" max="10" value="6"
+        style="width:3em;border:none;background:#fce4ee;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
+    </label>
+    <button class="btn primary" id="newBtn">🎲 New</button>
+    <button class="btn" id="undoBtn">↶ Undo</button>
+    <button class="btn" id="resetBtn">↺ Reset</button>
+    <button class="btn" id="rulesBtn">?</button>
+  </div>
+  <div class="hint">Drag from a cat 🐱 to its yarn 🧶. Strands can't cross — fill every square.</div>
+  <div class="stats" id="stats"></div>
+
+  <div class="overlay" id="rulesOverlay">
+    <div class="card">
+      <h2>How to play</h2>
+      <p>Every <b>cat 🐱</b> has a matching <b>ball of yarn 🧶</b> — same colour and number.</p>
+      <p>Drag a strand from each cat to its yarn (or yarn to cat). Strands can't <b>cross</b> or <b>branch</b>, and every square must be covered.</p>
+      <p>Drag back to shorten a strand; tap a cat or yarn to clear its strand. Drawing through another strand cuts it.</p>
+      <p>There's always exactly one answer, and you can reach it by logic alone.</p>
+      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOverlay">
+    <div class="card">
+      <div style="font-size:3rem" id="winCat">😻</div>
+      <h2 id="winTitle">Purrfect!</h2>
+      <p style="text-align:center" id="winMsg"></p>
+      <div class="winbtns">
+        <button class="btn" id="shareBtn">🔗 Copy challenge</button>
+        <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+/* ---------- deterministic daily RNG ---------- */
+function xmur3(str){ let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19); }
+  return function(){ h=Math.imul(h^(h>>>16),2246822507); h=Math.imul(h^(h>>>13),3266489909); return (h^=h>>>16)>>>0; }; }
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function makeRng(seed){ const s=xmur3(seed); return mulberry32(s()); }
+
+/* ---------- puzzle generation (Numberlink-style) ---------- */
+// cells are ids r*N+c; a strand is an ordered list of cell ids from one endpoint to the other.
+const DIRS=[[-1,0],[0,1],[1,0],[0,-1]]; // N,E,S,W
+const nbrs=(N,i)=>{ const r=Math.floor(i/N),c=i%N,o=[];
+  for(const [dr,dc] of DIRS){ const nr=r+dr,nc=c+dc; if(nr>=0&&nc>=0&&nr<N&&nc<N) o.push(nr*N+nc); } return o; };
+const MIN_LEN=3; // no trivial 2-cell strands
+
+// random Hamiltonian path: a serpentine, shuffled by backbite moves
+function hamPath(N,rng){
+  let p=[]; for(let r=0;r<N;r++) for(let c=0;c<N;c++) p.push(r*N+(r%2?N-1-c:c));
+  const pos=new Int32Array(N*N);
+  for(let m=0;m<N*N*20;m++){
+    if(rng()<.5) p.reverse();
+    const L=p.length, ns=nbrs(N,p[L-1]);
+    for(let i=0;i<L;i++) pos[p[i]]=i;
+    const i=pos[ns[Math.floor(rng()*ns.length)]];
+    if(i!==L-2) p=p.slice(0,i+1).concat(p.slice(i+1).reverse());
+  }
+  return p;
+}
+// cut a Hamiltonian path into K strands (each ≥ MIN_LEN) — a full-cover path set
+function genPaths(N,K,rng){
+  const p=hamPath(N,rng), lens=Array(K).fill(MIN_LEN);
+  for(let rest=p.length-MIN_LEN*K;rest>0;rest--) lens[Math.floor(rng()*K)]++;
+  const paths=[]; let at=0; for(const l of lens){ paths.push(p.slice(at,at+l)); at+=l; }
+  return paths;
+}
+
+// edge topology per board size: edge e joins cells ea[e] < eb[e]; inc[i] = edges touching cell i
+const topo={};
+function topoOf(N){ if(topo[N]) return topo[N];
+  const n=N*N, ea=[], eb=[], inc=Array.from({length:n},()=>[]);
+  for(let i=0;i<n;i++) for(const j of nbrs(N,i)) if(j>i){ inc[i].push(ea.length); inc[j].push(ea.length); ea.push(i); eb.push(j); }
+  return topo[N]={ ea:Int32Array.from(ea), eb:Int32Array.from(eb), inc };
+}
+
+// direct rules, propagated to a fixpoint from edge state es0 + colour masks cs0 (default: all open).
+// Edges are ON(1)/OFF(-1)/unknown(0); each cell has a bitmask of colours it may be.
+// Rules: (1) degree — an endpoint links exactly 1 neighbour, every other cell exactly 2
+// (every square is filled); (2) colour — linked cells share a colour, and cells with no
+// colour in common can't link; (3) no loops — never link two cells already joined;
+// (4) reach — colour c survives in a cell only if c's cat can reach it and it has ≥2
+// c-capable open sides (a strand passes through). Returns {dead, complete, es, cs, ea, eb}.
+function propagate(N,ends,es0,cs0){
+  const n=N*N, K=ends.length, {ea,eb,inc}=topoOf(N), E=ea.length;
+  const es=es0?Int8Array.from(es0):new Int8Array(E), need=new Int8Array(n).fill(2), cs=cs0?Int32Array.from(cs0):new Int32Array(n).fill((1<<K)-1), isEp=new Uint8Array(n);
+  ends.forEach(([a,b],c)=>{ for(const x of [a,b]){ need[x]=1; cs[x]=1<<c; isEp[x]=1; } });
+  const other=(e,i)=>ea[e]===i?eb[e]:ea[e];
+  const par=new Int32Array(n), find=x=>{ while(par[x]!==x){ par[x]=par[par[x]]; x=par[x]; } return x; };
+  const seen=new Uint8Array(n), q=new Int32Array(n);
+  let changed=true, dead=false;
+  const set=(e,v)=>{ if(es[e]===0){ es[e]=v; changed=true; } else if(es[e]!==v) dead=true; };
+  while(changed&&!dead){
+    changed=false;
+    for(let i=0;i<n&&!dead;i++){ let on=0,un=0; // (1) degree
+      for(const e of inc[i]){ if(es[e]===1) on++; else if(es[e]===0) un++; }
+      if(on>need[i]||on+un<need[i]){ dead=true; break; }
+      if(un&&(on===need[i]||on+un===need[i])){ const v=on===need[i]?-1:1; for(const e of inc[i]) if(es[e]===0) set(e,v); } }
+    for(let e=0;e<E&&!dead;e++){ const a=ea[e],b=eb[e], m=cs[a]&cs[b]; // (2) colour
+      if(es[e]===0&&!m) set(e,-1);
+      else if(es[e]===1){ if(!m){ dead=true; break; } if(cs[a]!==m||cs[b]!==m){ cs[a]=cs[b]=m; changed=true; } } }
+    if(dead) break;
+    for(let i=0;i<n;i++) par[i]=i; // (3) no loops
+    for(let e=0;e<E;e++) if(es[e]===1){ const a=find(ea[e]),b=find(eb[e]); if(a===b){ dead=true; break; } par[a]=b; }
+    for(let e=0;e<E&&!dead;e++) if(es[e]===0&&find(ea[e])===find(eb[e])) set(e,-1);
+    for(let c=0;c<K&&!dead;c++){ const bit=1<<c, [A,B]=ends[c]; seen.fill(0); seen[A]=1; q[0]=A; let qn=1; // (4) reach
+      while(qn){ const i=q[--qn]; for(const e of inc[i]) if(es[e]!==-1){ const j=other(e,i); if(!seen[j]&&(cs[j]&bit)){ seen[j]=1; q[qn++]=j; } } }
+      if(!seen[B]){ dead=true; break; }
+      for(let i=0;i<n;i++) if((cs[i]&bit)&&!isEp[i]){
+        let k=0; for(const e of inc[i]) if(es[e]!==-1&&(cs[other(e,i)]&bit)) k++;
+        if(!seen[i]||k<2){ cs[i]&=~bit; changed=true; if(!cs[i]){ dead=true; break; } } }
+    }
+  }
+  return { dead, complete: !dead && es.indexOf(0)<0, es, cs, ea, eb };
+}
+
+// human-style deductive solver: the direct rules, plus proof by contradiction when they stall —
+// assume an open edge is on (or off), apply the direct rules; if that breaks the board, the
+// opposite is proven. One level only: the assumption plays out with direct rules, never
+// another assumption. Returns propagate's result + steps (contradictions used).
+function solve(N,ends){
+  let s=propagate(N,ends), steps=0;
+  for(let hit=true;hit&&!s.dead&&!s.complete;){ hit=false;
+    for(let e=0;e<s.es.length&&!s.dead&&!s.complete;e++) if(s.es[e]===0) for(const v of [1,-1]){
+      const t=Int8Array.from(s.es); t[e]=v;
+      if(propagate(N,ends,t,s.cs).dead){ t[e]=-v; s=propagate(N,ends,t,s.cs); steps++; hit=true; break; } }
+  }
+  s.steps=steps; return s;
+}
+
+// difficulty pass: join two strands whose ends touch, keeping the join only if the board is
+// still fully deducible. Fewer, longer strands = harder; repeat until no join survives.
+// ponytail: a join that failed isn't retried after later joins (rarely flips, and failed
+// solves are ~95% of gen time); drop `tried` if boards want more merging.
+function mergePaths(N,paths,rng){
+  const tried=new Set(), key=(p,q)=>[p[0],p[p.length-1],q[0],q[q.length-1]].join();
+  for(let again=true;again;){ again=false;
+    const cand=[]; for(let a=0;a<paths.length;a++) for(let b=a+1;b<paths.length;b++) cand.push([a,b]);
+    for(let i=cand.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [cand[i],cand[j]]=[cand[j],cand[i]]; }
+    for(const [a,b] of cand){ let m=null;
+      for(const p of [paths[a],paths[a].slice().reverse()]) for(const q of [paths[b],paths[b].slice().reverse()])
+        if(!m&&nbrs(N,p[p.length-1]).includes(q[0])) m=p.concat(q);
+      const id=key(paths[a],paths[b]);
+      if(!m||tried.has(id)) continue;
+      const next=paths.filter((_,k)=>k!==a&&k!==b).concat([m]);
+      if(solve(N,next.map(p=>[p[0],p[p.length-1]])).complete){ paths=next; again=true; break; }
+      tried.add(id);
+    }
+  }
+  return paths;
+}
+
+// generate a fully-deducible board: cut a random Hamiltonian path into strands, then while
+// the direct rules stall, split a strand at a cell they couldn't pin down (the new cat+yarn
+// pair adds clues right where the ambiguity is), then merge back down (mergePaths, which may
+// lean on contradiction). Serve only if the direct rules alone can't finish it — every board
+// needs ≥1 contradiction step. Splits may overshoot the palette (up to 2×) as long as merging
+// lands within it; else restart.
+function generatePuzzle(N,rng){
+  for(let a=0;a<2000;a++){
+    let paths=genPaths(N,Math.max(2,N-3),rng);
+    while(true){
+      const ends=paths.map(p=>[p[0],p[p.length-1]]), s=propagate(N,ends);
+      if(s.complete){
+        paths=mergePaths(N,paths,rng); if(paths.length>maxPairs(N)||!solve(N,paths.map(p=>[p[0],p[p.length-1]])).steps) break;
+        for(const p of paths) if(rng()<.5) p.reverse(); // which end is the cat
+        const col=COLORS.slice(); for(let i=col.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [col[i],col[j]]=[col[j],col[i]]; }
+        return { N, paths, ends:paths.map(p=>[p[0],p[p.length-1]]), colors:col.slice(0,paths.length) };
+      }
+      if(s.dead||paths.length>=2*maxPairs(N)) break;
+      const und=new Set(); s.es.forEach((v,e)=>{ if(v===0){ und.add(s.ea[e]); und.add(s.eb[e]); } });
+      const opts=[]; paths.forEach((p,pi)=>{ for(let i=MIN_LEN;i<=p.length-MIN_LEN;i++) if(und.has(p[i])||und.has(p[i-1])) opts.push([pi,i]); });
+      if(!opts.length) break;
+      const [pi,i]=opts[Math.floor(rng()*opts.length)], p=paths[pi];
+      paths.splice(pi,1,p.slice(0,i),p.slice(i));
+    }
+  }
+  throw new Error("Purrlink: no deducible "+N+"×"+N+" board"); // never serve an unproven board
+}
+
+/* ---------- config ---------- */
+const DEFAULT_N=6, MIN_N=5, MAX_N=10; // 10×10 needs ~15 pairs — hence 16 colours
+// strand colours: all pairs ΔE76 ≥ 22 (endpoint number badges back them up)
+const COLORS=["#e5484d","#f28c28","#f2c230","#9ccc3a","#3fae5a","#22a39f","#3fa7e0","#3f63d6","#8a5fbf","#d152b8","#f27aa8","#9a6a44","#506400","#b0bc84","#ccace4","#80486c"];
+// pair cap: ≤9×9 stays at 12 (fewer pairs = harder); only 10×10 needs the full palette
+const maxPairs=N=>N<=9?12:COLORS.length;
+const CATS=["🐱","😺","😸","😹","😻","😼","😽"];
+const WINCATS=["😻","😸","😺","🐱","😹"];
+const WINPUNS=["Purrfect!","Meow-velous!","Paw-some!","Feline good!","Claw-some!","Purr-fectly played!","The cat's whiskers!","Hiss-toric win!","Totally paw-sitive!","You're kitten me!"];
+const STORE_KEY="purrlink_v1";
+
+/* ---------- date ---------- */
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+/* ---------- storage ---------- */
+// { best:{ N: seconds }, solved: count } — best time per board size + total solved (never the puzzle)
+function loadStore(){ try{ const s=JSON.parse(localStorage.getItem(STORE_KEY)); return (s&&s.best)?s:{best:{},solved:0}; }catch(e){ return {best:{},solved:0}; } }
+function saveStore(s){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(s)); }catch(e){} }
+function recordWin(N,time){
+  const s=loadStore(); s.solved=(s.solved||0)+1;
+  if(s.best[N]===undefined||time<s.best[N]) s.best[N]=time;
+  saveStore(s);
+}
+
+/* ---------- state ---------- */
+const puzzleCache={};
+let seedCounter=0;
+const state={ N:DEFAULT_N, seed:null, puz:null, paths:null, ep:null, drag:null,
+  started:false, elapsed:0, timerId:null, won:false, undo:[], challenge:null };
+
+function puzzleFor(N,seed){
+  if(!puzzleCache[seed]) puzzleCache[seed]=generatePuzzle(N, makeRng(seed));
+  return puzzleCache[seed];
+}
+// a strand joins its pair's two endpoints
+const linked=(puz,k,p)=>p.length>1 && puz.ends[k].includes(p[0]) && puz.ends[k].includes(p[p.length-1]);
+// win = every pair linked and every square covered. Strands own their cells exclusively, so
+// this is exactly the rules — and the solver proved only one board satisfies them.
+function isSolved(puz,paths){
+  let n=0; for(let k=0;k<paths.length;k++){ if(!linked(puz,k,paths[k])) return false; n+=paths[k].length; }
+  return n===puz.N*puz.N;
+}
+
+/* ---------- render ---------- */
+const boardEl=document.getElementById("board");
+// big boards can take a while to generate: paint the spinner, then build. A newer load
+// cancels a pending one; cached boards load at once.
+let loadTok=0;
+function loadGame(N,seed){
+  const tok=++loadTok, go=()=>{ if(tok===loadTok){ setupGame(N,seed); boardEl.classList.remove("busy"); } };
+  if(puzzleCache[seed]) return go();
+  boardEl.classList.add("busy"); requestAnimationFrame(()=>setTimeout(go));
+}
+function setupGame(N,seed){
+  stopTimer();
+  state.N=N; state.seed=seed; state.puz=puzzleFor(N,seed);
+  state.paths=state.puz.ends.map(()=>[]);
+  state.ep=new Map(); state.puz.ends.forEach(([a,b],k)=>{ state.ep.set(a,[k,0]); state.ep.set(b,[k,1]); }); // cell → [pair, 0 cat / 1 yarn]
+  state.started=false; state.elapsed=0; state.won=false; state.undo=[]; state.drag=null;
+  document.getElementById("clock").textContent="0:00"; updateChallengeUI();
+  document.getElementById("linkTotal").textContent=state.puz.ends.length;
+  renderBoard(); updateUndo();
+}
+function renderBoard(){
+  const {N}=state.puz;
+  boardEl.style.setProperty("--n",N);
+  boardEl.innerHTML="";
+  for(let i=0;i<N*N;i++){ const cell=document.createElement("div"); cell.className="cell"; cell.dataset.i=i; boardEl.appendChild(cell); }
+  paint();
+}
+function paint(){
+  const {N,colors}=state.puz, own=new Int8Array(N*N).fill(-1), links=new Uint8Array(N*N);
+  const bit=(a,b)=> b-a===-N?1 : b-a===1?2 : b-a===N?4 : 8; // N,E,S,W
+  let done=0;
+  state.paths.forEach((p,k)=>{ if(linked(state.puz,k,p)) done++;
+    for(let j=0;j<p.length;j++){ own[p[j]]=k; if(j){ links[p[j-1]]|=bit(p[j-1],p[j]); links[p[j]]|=bit(p[j],p[j-1]); } } });
+  boardEl.querySelectorAll(".cell").forEach(cell=>{
+    const i=+cell.dataset.i, k=own[i], ep=state.ep.get(i);
+    const col=k>=0?colors[k]:null, bar=d=>'<div class="link '+d+'" style="background:'+col+'"></div>';
+    let h="";
+    if(k>=0){ for(let d=0;d<4;d++) if(links[i]&(1<<d)) h+=bar("nesw"[d]);
+      if(!ep) h+='<div class="dot" style="background:'+col+'"></div>'; }
+    if(ep){ const [pk,kind]=ep, full=linked(state.puz,pk,state.paths[pk]);
+      h+='<div class="ep'+(full?' done':'')+'" style="box-shadow:0 0 0 2px '+colors[pk]+' inset"><span class="bd">'+(pk+1)+'</span>'+(kind?"🧶":full?"😻":"🐱")+'</div>'; }
+    cell.style.background = ep ? "color-mix(in srgb,"+colors[ep[0]]+" 40%,#fff)" : k>=0 ? "color-mix(in srgb,"+col+" 22%,#fff)" : "";
+    if(cell._h!==h){ cell.innerHTML=h; cell._h=h; } // untouched cells keep their DOM (no replayed pops)
+  });
+  document.getElementById("linkCount").textContent=done;
+}
+
+/* ---------- interaction ---------- */
+// drag from an endpoint (restarts its strand) or from a strand cell (trims it there), then
+// each cell you enter extends the strand; re-entering it trims back; entering another
+// strand cuts that one. Tap an endpoint to clear its strand.
+function cellAt(e){ const el=document.elementFromPoint(e.clientX,e.clientY), c=el&&el.closest?el.closest(".cell"):null; return c?+c.dataset.i:-1; }
+function ownerOf(i){ for(let k=0;k<state.paths.length;k++){ const m=state.paths[k].indexOf(i); if(m>=0) return [k,m]; } return null; }
+function extend(k,y){
+  const p=state.paths[k], j=p.indexOf(y);
+  if(j>=0){ p.length=j+1; return true; }                   // back over our own strand: trim
+  if(linked(state.puz,k,p)) return false;                   // already home — stop
+  const ep=state.ep.get(y);
+  if(ep){ if(ep[0]!==k) return false; p.push(y); return true; } // only our own endpoint
+  const o=ownerOf(y); if(o) state.paths[o[0]].length=o[1];  // cut the strand we cross
+  p.push(y); return true;
+}
+function onDown(e){
+  if(state.won) return;
+  const i=cellAt(e); if(i<0) return;
+  const snap=state.paths.map(p=>p.slice()), ep=state.ep.get(i), o=ownerOf(i);
+  let k;
+  if(ep){ k=ep[0]; state.paths[k]=[i]; }
+  else if(o){ k=o[0]; state.paths[k].length=o[1]+1; }
+  else return;
+  e.preventDefault();
+  if(boardEl.setPointerCapture) boardEl.setPointerCapture(e.pointerId);
+  if(!state.started) startTimer();
+  state.drag={k,snap}; paint();
+}
+function onMove(e){
+  if(!state.drag) return;
+  const t=cellAt(e), N=state.N, k=state.drag.k; if(t<0) return;
+  const p=state.paths[k], j=p.indexOf(t);
+  if(j>=0) p.length=j+1;
+  else for(let h=p[p.length-1];h!==t;h=p[p.length-1]){ // fast drags skip cells: step toward the pointer
+    const dr=Math.floor(t/N)-Math.floor(h/N), dc=t%N-h%N;
+    if(!extend(k, Math.abs(dr)>=Math.abs(dc) ? h+Math.sign(dr)*N : h+Math.sign(dc))) break; }
+  paint();
+}
+function onUp(){
+  if(!state.drag) return;
+  const {snap}=state.drag; state.drag=null;
+  if(JSON.stringify(snap)!==JSON.stringify(state.paths)) pushUndo(snap);
+  paint(); updateUndo(); checkWin();
+}
+
+// undo stack: one snapshot per stroke. Keep the last 10.
+function pushUndo(snap){ state.undo.push(snap); if(state.undo.length>10) state.undo.shift(); }
+function undo(){ if(state.won||!state.undo.length) return; state.paths=state.undo.pop(); paint(); updateUndo(); }
+function updateUndo(){ document.getElementById("undoBtn").disabled=!state.undo.length; }
+
+function checkWin(){ if(isSolved(state.puz,state.paths)) win(); }
+function win(){
+  const N=state.puz.N;
+  state.won=true; stopTimer();
+  recordWin(N,state.elapsed);
+  renderStats();
+  document.getElementById("winCat").textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
+  document.getElementById("winTitle").textContent=WINPUNS[Math.floor(Math.random()*WINPUNS.length)];
+  let msg="You untangled the "+N+"×"+N+" yarn in "+fmt(state.elapsed)+".";
+  if(state.challenge) msg += state.elapsed<=state.challenge.time
+    ? " 🏆 You beat the "+fmt(state.challenge.time)+" challenge!"
+    : " 🧶 The target was "+fmt(state.challenge.time)+" — try again!";
+  document.getElementById("winMsg").textContent=msg;
+  document.getElementById("winOverlay").classList.add("show");
+  confetti();
+}
+function confetti(){
+  for(let i=0;i<24;i++){
+    const s=document.createElement("div");
+    s.className="confetti"; s.textContent=Math.random()<.5?"🧶":CATS[Math.floor(Math.random()*CATS.length)];
+    s.style.left=Math.random()*100+"vw";
+    s.style.animationDuration=(1.6+Math.random()*1.8)+"s";
+    s.style.animationDelay=(Math.random()*.5)+"s";
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),4000);
+  }
+}
+
+/* ---------- timer ---------- */
+function fmt(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function startTimer(){ state.started=true; state.timerId=setInterval(()=>{ state.elapsed++;
+  document.getElementById("clock").textContent=fmt(state.elapsed); updateChallengeUI(); },1000); }
+function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
+
+/* ---------- stats ---------- */
+function renderStats(){
+  const s=loadStore(); const el=document.getElementById("stats");
+  const sizes=Object.keys(s.best).map(Number).sort((a,b)=>a-b);
+  let html='<div class="statshead"><h2>Your stats</h2>'+
+    '<div class="chip">Solved <b>'+(s.solved||0)+'</b></div></div>';
+  if(sizes.length){
+    html+='<table><tr><th class="d">Board</th><th>Best time</th></tr>';
+    for(const N of sizes) html+='<tr><td class="d">'+N+'×'+N+'</td><td class="ok">'+fmt(s.best[N])+'</td></tr>';
+    html+='</table>';
+  } else html+='<p style="opacity:.6">No yarn untangled yet — solve one to start your record!</p>';
+  el.innerHTML=html;
+}
+
+/* ---------- wire up ---------- */
+const sizeInput=document.getElementById("sizeInput");
+function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
+function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+
+/* ---------- challenge links ---------- */
+// Shareable board: the hash carries only N ~ seed (~ challenger-time, once solved). The receiver
+// re-runs the generator (never the solution) — same seed ⇒ same board anywhere.
+function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+(state.won?"~"+state.elapsed:""); }
+function parseChallenge(){
+  const m=location.hash.match(/^#c=(\d+)~([^~]+)(?:~(\d+))?$/); if(!m) return null;
+  const N=+m[1], seed=decodeURIComponent(m[2]), time=m[3]===undefined?null:+m[3];
+  if(N<MIN_N||N>MAX_N||!seed||(time!==null&&!isFinite(time))) return null; // out of range / unparseable ⇒ decline
+  return {N,seed,time};
+}
+function copyChallenge(btn,copied,restore){
+  copied=copied||"✓ Copied!"; restore=restore||"🔗 Copy challenge";
+  const link=buildChallengeLink();
+  const ok=()=>{ btn.textContent=copied; setTimeout(()=>{ btn.textContent=restore; },1600); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok,()=>prompt("Copy this challenge link:",link));
+  else prompt("Copy this challenge link:",link);
+}
+function showChallenge(){ const el=document.getElementById("challenge");
+  el.className="challenge"; el.textContent=state.challenge?"🏁 Beat "+fmt(state.challenge.time):"🔗 Shared board"; el.style.display=""; }
+function showBadLink(){ const el=document.getElementById("challenge");
+  el.className="challenge bad"; el.textContent="⚠️ Bad link — daily board"; el.style.display=""; }
+function clearChallenge(){ state.challenge=null;
+  document.getElementById("challenge").style.display="none";
+  if(location.hash) history.replaceState(null,"",location.pathname); updateChallengeUI(); }
+function updateChallengeUI(){ const clk=document.getElementById("clock");
+  clk.classList.toggle("ahead", !!state.challenge && state.elapsed<=state.challenge.time);
+  clk.classList.toggle("behind", !!state.challenge && state.elapsed>state.challenge.time); }
+
+// click the backdrop (outside the card) to dismiss any overlay
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
+document.getElementById("dateTag").textContent="Connect each cat to its ball of yarn, any size "+MIN_N+"–"+MAX_N;
+boardEl.addEventListener("pointerdown",onDown);
+boardEl.addEventListener("pointermove",onMove);
+boardEl.addEventListener("pointerup",onUp);
+boardEl.addEventListener("pointercancel",onUp);
+document.getElementById("newBtn").onclick=newGame;
+document.getElementById("undoBtn").onclick=undo;
+document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
+document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
+document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
+document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
+const incoming=parseChallenge();
+if(incoming){ if(incoming.time!==null) state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
+else { loadGame(DEFAULT_N, todayStr()+"|purrlink"); if(location.hash.indexOf("#c=")===0) showBadLink(); } // daily default board
+renderStats();
+
+/* ---------- self-check (console) ---------- */
+function runSelfTest(){
+  let ok=true;
+  for(let N=MIN_N;N<=MAX_N;N++){
+    const puz=generatePuzzle(N, makeRng("test|"+N)), n=N*N, seen=new Uint8Array(n);
+    // strands cover every cell exactly once, step between neighbours, and are ≥ MIN_LEN
+    for(const p of puz.paths){ if(p.length<MIN_LEN) ok=false;
+      for(let j=0;j<p.length;j++){ if(seen[p[j]]++) ok=false; if(j&&!nbrs(N,p[j-1]).includes(p[j])) ok=false; } }
+    if(seen.indexOf(0)>=0||puz.paths.length>maxPairs(N)) ok=false;
+    // the generator's own solution must pass the player-facing win check
+    if(!isSolved(puz,puz.paths)) ok=false;
+    // re-solve from the bare endpoints (the player's starting state): fully deducible,
+    // and the deduced links must be exactly the generator's strands
+    const sol=solve(N,puz.ends), solEdges=new Set();
+    // …and never by the direct rules alone: every board needs ≥1 contradiction step
+    if(propagate(N,puz.ends).complete||!sol.steps) ok=false;
+    for(const p of puz.paths) for(let j=1;j<p.length;j++) solEdges.add(Math.min(p[j-1],p[j])+"_"+Math.max(p[j-1],p[j]));
+    if(sol.complete) sol.es.forEach((v,e)=>{ if((v===1)!==solEdges.has(sol.ea[e]+"_"+sol.eb[e])) ok=false; });
+    console.log("  "+N+"×"+N+" ("+puz.paths.length+" pairs): "+(sol.complete?"logically solvable ✅ ("+sol.steps+" contradiction steps)":"not deducible ❌"));
+    if(!sol.complete) ok=false;
+    console.assert(ok,"Purrlink self-test failed for "+N);
+  }
+  console.log(ok?"Purrlink self-test passed ✅":"Purrlink self-test FAILED ❌");
+  return ok;
+}
+if(location.hostname==="localhost"||location.hash==="#selftest") runSelfTest();
+</script>
+</body>
+</html>
