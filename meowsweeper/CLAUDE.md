@@ -3,17 +3,17 @@
 A "Minesweeper"-style logic puzzle with cats: clear every safe tile without
 digging up one of the spooky things that scare the cats. Numbers count adjacent
 spooky things; use them to deduce the rest. Every board is deterministic per
-seed and — unlike classic minesweeper — solvable by **pure deduction, no
-guessing** (see below).
+seed and — unlike classic minesweeper — solvable by **pure deduction** (see
+below).
 
 See the repo-root `CLAUDE.md` for the shared Kattenspellen criteria (single-file
 delivery, seeded generation, self-test, visual style, deploy). This file is the
 Meowsweeper-specific detail.
 
-## The no-guess invariant (the whole point)
+## The deducibility invariant (the whole point)
 
-Classic minesweeper *requires guessing* — that violates the repo's hard
-invariant. So Meowsweeper only ever serves boards a no-guess deductive solver
+Classic minesweeper often leaves a coin flip — that violates the repo's hard
+invariant. So Meowsweeper only ever serves boards a deductive solver
 can fully crack. `generatePuzzle` retries fresh random mine layouts until
 `solve` proves the board is completely deducible from the opening; a layout that
 isn't is discarded, never served. At 15% density (`DENSITY`) the fall-back is
@@ -31,9 +31,9 @@ timer → stats → wire-up → console self-test.
 - **Generation** (`generatePuzzle`): pick a random start, keep its 3×3 mine-free
   (so the first dig is a blank that floods), scatter `M = round(N²·DENSITY)`
   mines over the rest, and run the solver. Return the first layout proven
-  no-guess; keep the most-revealed as a fallback (self-test asserts it's never
+  fully deducible; keep the most-revealed as a fallback (self-test asserts it's never
   needed). Generation is sub-millisecond — no size scaling problem.
-- **Deductive solver** (`solve`): simulate a player who never guesses. Reveal
+- **Deductive solver** (`solve`): simulate a player who only makes proven moves. Reveal
   the blank start, flood its zero-region, then propagate to a fixpoint with two
   rule families: **count** (a clue whose remaining mines equal its unknown
   neighbours flags them all; one whose remaining is 0 clears them all) and
@@ -42,11 +42,11 @@ timer → stats → wire-up → console self-test.
   `complete` ⇒ every safe cell was deduced.
 - **The player digs and flags** the same board the solver reasoned about.
   `dig` floods zero-regions exactly like the solver; a flag is a pure marker.
-  Digging a mine loses (a perfect, no-guess player never has to).
+  Digging a mine loses (a player who only makes proven moves never has to).
 - **Opening region pre-revealed on load.** `setupGame` calls `floodOpen(start)`
   before rendering, so the board loads showing the same opening region + numbers
   the solver starts from — no first-dig death, and the served board matches the
-  no-guess proof from tile one. Generation also rejects boards whose opening
+  deductive proof from tile one. Generation also rejects boards whose opening
   flood already reveals every safe cell (they'd need no real dig).
 - **Board size is the difficulty**: 5–10, default 8 (`DEFAULT_N`). Density is
   fixed, so a bigger grid means more tiles and more mines to reason about.
@@ -87,7 +87,7 @@ count — never the puzzle.
 mine-free, the `num` counts match the mine layout, and (re-solving) that every
 served board is fully deducible with its deduced safe cells matching the real
 ones. Every size should print "logically solvable ✅"; "fell back ⚠️" means no
-no-guess board was found in the retry budget (raise `retries`/lower `DENSITY` in
+fully deducible board was found in the retry budget (raise `retries`/lower `DENSITY` in
 `generatePuzzle`).
 
 Headless check (Node with a stubbed DOM):

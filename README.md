@@ -24,7 +24,7 @@ A "Train Tracks"-style logic puzzle. Lay one connected paw trail to match the ro
 
 ### 🙀 [Meowsweeper](https://kattenspellen.github.io/games/meowsweeper/)
 
-A "Minesweeper"-style logic puzzle. Clear every safe tile and flag the spooky things — no guessing, ever.
+A "Minesweeper"-style logic puzzle. Clear every safe tile and flag the spooky things.
 
 <img src="assets/meowsweeper-demo.gif" alt="Meowsweeper demo" width="400">
 

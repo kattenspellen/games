@@ -2,7 +2,7 @@
 
 A "Queens"-style logic puzzle with cats: place one cat per row, per column, and
 per color region; no two cats touch (including diagonally). Puzzles are
-deterministic per seed and solvable by pure deduction — no guessing.
+deterministic per seed and solvable by pure deduction.
 
 See the repo-root `CLAUDE.md` for the shared Kattenspellen criteria (single-file
 delivery, seeded generation, self-test, visual style, deploy). This file is the

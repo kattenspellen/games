@@ -177,7 +177,7 @@
       <p>Every <b>cat 🐱</b> has a matching <b>ball of yarn 🧶</b> — same colour and number.</p>
       <p>Drag a strand from each cat to its yarn (or yarn to cat). Strands can't <b>cross</b> or <b>branch</b>, and every square must be covered.</p>
       <p>Drag back to shorten a strand; tap a cat or yarn to clear its strand. Drawing through another strand cuts it.</p>
-      <p>There's always exactly one answer, and you can reach it by logic alone — no guessing.</p>
+      <p>There's always exactly one answer, and you can reach it by logic alone.</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
@@ -284,7 +284,7 @@ function propagate(N,ends,es0,cs0){
 // human-style deductive solver: the direct rules, plus proof by contradiction when they stall —
 // assume an open edge is on (or off), apply the direct rules; if that breaks the board, the
 // opposite is proven. One level only: the assumption plays out with direct rules, never
-// another assumption. Never guesses. Returns propagate's result + steps (contradictions used).
+// another assumption. Returns propagate's result + steps (contradictions used).
 function solve(N,ends){
   let s=propagate(N,ends), steps=0;
   for(let hit=true;hit&&!s.dead&&!s.complete;){ hit=false;

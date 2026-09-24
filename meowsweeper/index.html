@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Meowsweeper — a &quot;Minesweeper&quot;-style cat logic puzzle</title>
-<meta name="description" content="Meowsweeper is a free daily logic puzzle: clear every safe tile without waking the spooky things that scare the cats. Every board is deterministic and solvable by pure deduction — no guessing. No ads, no telemetry.">
+<meta name="description" content="Meowsweeper is a free daily logic puzzle: clear every safe tile without waking the spooky things that scare the cats. Every board is deterministic and solvable by pure deduction. No ads, no telemetry.">
 <link rel="canonical" href="https://kattenspellen.github.io/games/meowsweeper/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Meowsweeper — a &quot;Minesweeper&quot;-style cat logic puzzle">
-<meta property="og:description" content="A free daily logic puzzle with cats. Clear every safe tile and flag the spooky things — no guessing, ever. No ads, no telemetry.">
+<meta property="og:description" content="A free daily logic puzzle with cats. Clear every safe tile and flag the spooky things. No ads, no telemetry.">
 <meta property="og:url" content="https://kattenspellen.github.io/games/meowsweeper/">
 <meta property="og:image" content="https://kattenspellen.github.io/games/assets/meowsweeper-preview.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -178,7 +178,7 @@
       <h2>How to play</h2>
       <p>Spooky things are hiding among the tiles 👻🤡👽 — clear every safe tile without digging one up to keep your cat safe!</p>
       <p>Each opened tile shows how many spooky things touch it (its 8 neighbours). A <b>blank</b> tile has none, so its neighbours auto-clear.</p>
-      <p>Use those numbers to deduce where the spooky things are — every board is solvable by <b>pure logic, no guessing</b>. Switch to 🚩 mode (or right-click) to flag them.</p>
+      <p>Use those numbers to deduce where the spooky things are — every board is solvable by <b>pure logic</b>. Switch to 🚩 mode (or right-click) to flag them.</p>
       <p>Clear all safe tiles to win. Dig up a spooky thing and the cats bolt — 🙀 — but you can try the same board again.</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
     </div>
@@ -216,13 +216,13 @@ function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.
   t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
 function makeRng(seed){ const s=xmur3(seed); return mulberry32(s()); }
 
-/* ---------- puzzle generation (Minesweeper-style, no-guess) ---------- */
+/* ---------- puzzle generation (Minesweeper-style, fully deducible) ---------- */
 // A cell id is r*N+c. nbrs = the 8 surrounding cells (Chebyshev neighbours).
 function nbrs(N,cell){ const r=(cell/N)|0, c=cell%N, out=[];
   for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ if(!dr&&!dc) continue;
     const nr=r+dr, nc=c+dc; if(nr>=0&&nc>=0&&nr<N&&nc<N) out.push(nr*N+nc); } return out; }
 
-// human-style deductive solver: simulate a player who never guesses. Reveal the
+// human-style deductive solver: simulate a player who only makes proven moves. Reveal the
 // (guaranteed-blank) start, flood its zero-region, then propagate. known: 0
 // unknown, 1 safe-revealed, 2 known-mine. complete ⇒ every safe cell deduced.
 // Two rule families: (1) count — a revealed number whose remaining mines equal
@@ -271,7 +271,7 @@ function solve(N,mines,start){
   return { complete, known, num };
 }
 
-const DENSITY=0.15; // mine fraction; kept modest so no-guess boards land inside the retry budget
+const DENSITY=0.15; // mine fraction; kept modest so fully deducible boards land inside the retry budget
 function mineCount(N){ return Math.max(1, Math.round(N*N*DENSITY)); }
 
 // count cells the opening flood alone reveals from start (reveal start, flood its zero-region).
@@ -283,7 +283,7 @@ function openFloodCount(N,num,start){
 }
 
 // build a fully-deducible board: random mine layout with a mine-free 3×3 around a
-// random start, retry until the solver proves it no-guess; keep the most-revealed
+// random start, retry until the solver proves it fully deducible; keep the most-revealed
 // layout as a fallback (never expected to serve — see self-test).
 function generatePuzzle(N,rng){
   const cells=N*N, M=mineCount(N);
@@ -559,7 +559,7 @@ function runSelfTest(){
     // numbers must match the mine layout
     for(let c=0;c<N*N;c++){ if(puz.mines.has(c)) continue; let n=0;
       for(const nb of nbrs(N,c)) if(puz.mines.has(nb)) n++; if(n!==puz.num[c]) ok=false; }
-    // re-solve: every board served must be fully deducible with no guessing
+    // re-solve: every board served must be fully deducible
     const sol=solve(N,puz.mines,puz.start);
     if(sol.complete){ // and its safe cells match the real safe cells
       for(let c=0;c<N*N;c++) if(!puz.mines.has(c) && sol.known[c]!==1) ok=false;

@@ -67,7 +67,7 @@ For any game with generated content:
   everyone that day; **fresh instances** from a distinct seed pattern.
 - **Logically solvable — the hard invariant.** Every served instance must be
   solvable by pure logical deduction — at every point the next move can be
-  *proven*, never guessed. Proof by contradiction counts as deduction: assume
+  *proven*. Proof by contradiction counts as deduction: assume
   one move, play out its forced consequences under the direct rules, and if the
   board breaks, the opposite is proven. Keep it to one level (the consequences
   of an assumption use direct rules only, never a nested assumption); search
@@ -75,6 +75,9 @@ For any game with generated content:
   under the same rules the player plays) before serving — never assume it. An
   instance that isn't fully deducible is a bug, not a hard puzzle; regenerate or
   fail loudly rather than serve it.
+- **Say what it is, not what it isn't.** UI copy, meta, comments and docs
+  describe fairness positively — "solvable by logic", "fully deducible". No
+  negated taglines tacked on.
 - **Prove from the player's actual starting state.** The deductive proof must
   begin from the exact state the player is handed — if the solver assumes an
   opening is already revealed, the served board must pre-reveal it too, or the

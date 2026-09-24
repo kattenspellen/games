@@ -3,7 +3,7 @@
 A "Numberlink"/"Flow"-style logic puzzle with cats: connect each cat 🐱 to its
 ball of yarn 🧶 (same colour) with a strand. Strands never cross or
 branch, and together they fill every square. Puzzles are deterministic per seed
-and solvable by pure deduction — no guessing.
+and solvable by pure deduction.
 
 See the repo-root `CLAUDE.md` for the shared Kattenspellen criteria (single-file
 delivery, seeded generation, self-test, visual style, deploy). This file is the

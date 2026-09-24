@@ -281,7 +281,7 @@ function pathData(N,pp){
   return { tracks, rowCounts, colCounts, solEdges };
 }
 
-// human-style deductive solver: constraint propagation only, never guessing.
+// human-style deductive solver: constraint propagation only.
 // edges are ON/OFF/unknown; every cell ends at degree 0 (empty) or 2 (paw).
 // returns {dead, complete, tracks, state}; complete && !dead ⇒ fully deducible.
 // Rules: (1) degree — a paw needs exactly 2 links, so force/forbid edges once a

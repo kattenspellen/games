@@ -262,7 +262,7 @@ function genColoring(N, placement, rng){
   return color;
 }
 
-// human-style deductive solver: solves using only inference, never guessing.
+// human-style deductive solver: solves using only inference.
 // returns {placed, placement}; placed===N means fully deducible (unique, no
 // trial-and-error). `placed` (how far pure deduction gets) also scores colorings
 // during carving. A contradiction (a unit with no candidates) stops deduction.

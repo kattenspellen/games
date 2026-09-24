@@ -4,7 +4,7 @@ A "Train Tracks"-style logic puzzle with cats: lay a single connected trail of
 cat paws from the entry nub to the exit nub. The trail never branches, crosses,
 or loops — each paw links exactly two of its four sides — and each row/column
 holds exactly its clue count. Puzzles are deterministic per seed and solvable by
-pure deduction — no guessing.
+pure deduction.
 
 See the repo-root `CLAUDE.md` for the shared Kattenspellen criteria (single-file
 delivery, seeded generation, self-test, visual style, deploy). This file is the
