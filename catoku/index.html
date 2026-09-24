@@ -74,6 +74,10 @@
     font-family: inherit; font-weight: 800; font-size: 1rem; padding: 6px 12px;
     border-radius: 12px; box-shadow: var(--shadow); transition: transform .12s; }
   .sharechip:hover { transform: translateY(-2px); }
+  .back { align-self: flex-start; width: 40px; height: 40px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; background: var(--panel); color: var(--ink);
+    text-decoration: none; font-weight: 900; font-size: 1.2rem; box-shadow: var(--shadow); transition: transform .12s; }
+  .back:hover { transform: translateY(-2px); }
   .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
 
   #board {
@@ -161,6 +165,7 @@
 </style>
 </head>
 <body>
+  <a class="back" href="../index.html" title="All games" aria-label="All games">←</a>
   <h1>Catoku</h1>
   <div class="tag" id="dateTag"></div>
 
@@ -168,7 +173,7 @@
     <div>😺 <span id="catCount">0</span>/<span id="catTotal">0</span></div>
     <div class="clock" id="clock">0:00</div>
     <div id="challenge" class="challenge" style="display:none"></div>
-    <button id="shareChip" class="sharechip" title="Copy challenge link" style="display:none">🔗</button>
+    <button id="shareChip" class="sharechip" title="Copy a link to this board">🔗</button>
   </div>
 
   <div id="board"></div>
@@ -425,7 +430,6 @@ function setupGame(N,seed){
   state.emoji=Array.from({length:N},()=>Array(N).fill(null));
   state.started=false; state.elapsed=0; state.won=false; state.undo=[];
   document.getElementById("clock").textContent="0:00"; updateChallengeUI();
-  document.getElementById("shareChip").style.display="none";
   renderBoard(); updateCount(); updateUndo();
 }
 function hdrBtn(kind,i){ // edge button that X-outs a whole row (kind='row') or column (kind='col')
@@ -544,7 +548,6 @@ function win(){
     ? " 🏆 You beat the "+fmt(state.challenge.time)+" challenge!"
     : " 🐾 The target was "+fmt(state.challenge.time)+" — try again!";
   document.getElementById("winMsg").textContent=msg;
-  document.getElementById("shareChip").style.display="";
   document.getElementById("winOverlay").classList.add("show");
   confetti();
 }
@@ -586,13 +589,13 @@ function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN
 function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
 
 /* ---------- challenge links ---------- */
-// Shareable board: the hash carries only N ~ seed ~ challenger-time. The receiver
+// Shareable board: the hash carries only N ~ seed (~ challenger-time, once solved). The receiver
 // re-runs the generator (never the solution) — same seed ⇒ same board anywhere.
-function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+"~"+state.elapsed; }
+function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+(state.won?"~"+state.elapsed:""); }
 function parseChallenge(){
-  const m=location.hash.match(/^#c=(\d+)~([^~]+)~(\d+)$/); if(!m) return null;
-  const N=+m[1], seed=decodeURIComponent(m[2]), time=+m[3];
-  if(N<MIN_N||N>MAX_N||!seed||!isFinite(time)||time<0) return null; // out of range / unparseable ⇒ decline
+  const m=location.hash.match(/^#c=(\d+)~([^~]+)(?:~(\d+))?$/); if(!m) return null;
+  const N=+m[1], seed=decodeURIComponent(m[2]), time=m[3]===undefined?null:+m[3];
+  if(N<MIN_N||N>MAX_N||!seed||(time!==null&&!isFinite(time))) return null; // out of range / unparseable ⇒ decline
   return {N,seed,time};
 }
 function copyChallenge(btn,copied,restore){
@@ -603,7 +606,7 @@ function copyChallenge(btn,copied,restore){
   else prompt("Copy this challenge link:",link);
 }
 function showChallenge(){ const el=document.getElementById("challenge");
-  el.className="challenge"; el.textContent="🏁 Beat "+fmt(state.challenge.time); el.style.display=""; }
+  el.className="challenge"; el.textContent=state.challenge?"🏁 Beat "+fmt(state.challenge.time):"🔗 Shared board"; el.style.display=""; }
 function showBadLink(){ const el=document.getElementById("challenge");
   el.className="challenge bad"; el.textContent="⚠️ Bad link — daily board"; el.style.display=""; }
 function clearChallenge(){ state.challenge=null;
@@ -624,7 +627,7 @@ document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOv
 document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
 document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
 const incoming=parseChallenge();
-if(incoming){ state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
+if(incoming){ if(incoming.time!==null) state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
 else { loadGame(DEFAULT_N, todayStr()+"|"+DEFAULT_N); if(location.hash.indexOf("#c=")===0) showBadLink(); } // daily default board
 renderStats();
 

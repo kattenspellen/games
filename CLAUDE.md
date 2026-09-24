@@ -43,14 +43,16 @@ Every game offers the same two modes:
 
 ## Challenge links
 
-Every game lets a finisher share the exact board they solved as a race. On win,
-a **Copy challenge** button on the win overlay writes a link whose **hash**
-carries only `N`, the seed string (URL-encoded), and the challenger's time in
-seconds, `~`-separated: `…/<game>/#c=<N>~<seed>~<seconds>`. The link never
+Every game lets a player share the exact board they're on. A 🔗 chip next to
+the counter is always shown; on win, a **Copy challenge** button on the win
+overlay does the same. The link's **hash** carries only `N` and the seed string
+(URL-encoded), plus — once solved — the challenger's time in seconds,
+`~`-separated: `…/<game>/#c=<N>~<seed>[~<seconds>]`. The link never
 carries the solution — the receiver re-runs the generator from the seed, so the
 same seed reproduces the same board anywhere (determinism is what makes this
-work). On load, a valid hash loads that board and shows a "Beat <time>" banner
-with the clock tinting green/red against the target; an **invalid or
+work). On load, a valid hash loads that board: with a time it shows a
+"Beat <time>" banner and the clock tints green/red against the target; without
+one it shows a "Shared board" banner and no target. An **invalid or
 out-of-range** hash declines with a short notice and falls back to the daily
 board — never fabricate a board. Times are self-reported and unverified (fine
 for a friendly race); no version pinning. Same encode/parse/validate helpers in
@@ -138,7 +140,8 @@ each one distinct. Split accordingly.
   scales down, wins pop.
 - **Component vocabulary**: pill tabs (`border-radius:999px`), rounded/pill
   buttons (the primary one filled with the game's accent), an `h1` + one-line
-  subtitle header, chips for clock/stats, and `.overlay` modals (rules/win/lose
+  subtitle header (above it, a round `.back` ← chip linking to
+  `../index.html`), chips for clock/stats, and `.overlay` modals (rules/win/lose
   — a centered `.card` on the accent-tinted scrim, dismissable by clicking the
   backdrop). Reuse these; don't invent parallels.
 - **Loading spinner**: `loadGame` adds `#board.busy`, then generates the board on
