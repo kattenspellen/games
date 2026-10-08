@@ -504,11 +504,12 @@ function renderStats(){
 /* ---------- challenge links ---------- */
 // Shareable board: the hash carries only N ~ seed (~ challenger-time, once solved). The receiver
 // re-runs the generator (never the solution) — same seed ⇒ same board anywhere.
-function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+(state.won?"~"+state.elapsed:""); }
+function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed).replace(/~/g,"%7E")+(state.won?"~"+state.elapsed:""); }
 function parseChallenge(){
-  const m=location.hash.match(/^#c=(\d+)~([^~]+)(?:~(\d+))?$/); if(!m) return null;
-  const N=+m[1], seed=decodeURIComponent(m[2]), time=m[3]===undefined?null:+m[3];
-  if(N<MIN_N||N>MAX_N||!seed||(time!==null&&!isFinite(time))) return null; // out of range / unparseable ⇒ decline
+  const m=location.hash.match(/^#c=(\d+)~([^~]+)(?:~(\d+))?$/); if(!m||m[0]!==location.hash) return null;
+  let seed; try { seed=decodeURIComponent(m[2]); } catch { return null; }
+  const N=+m[1], time=m[3]===undefined?null:+m[3];
+  if(!Number.isSafeInteger(N)||N<MIN_N||N>MAX_N||!seed||seed.length>200||(time!==null&&(!Number.isSafeInteger(time)||time<0))) return null;
   return {N,seed,time};
 }
 function copyChallenge(btn,copied,restore){

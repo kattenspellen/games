@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kittents — a cozy cat-and-basket logic puzzle</title>
+<meta name="description" content="A cozy, free daily Tents-style puzzle. Give every basket a cat, keep the cats apart, and match the row and column counts. Fully deducible. No ads, no telemetry, no tracking.">
+<link rel="canonical" href="https://kattenspellen.github.io/games/kittents/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Kittents — a cozy cat-and-basket logic puzzle">
+<meta property="og:description" content="A basket for every cat. A little space for everyone. Play a free daily logic puzzle, or share a cozy challenge with a friend.">
+<meta property="og:url" content="https://kattenspellen.github.io/games/kittents/">
+<meta property="og:image" content="https://kattenspellen.github.io/games/assets/kittents-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://kattenspellen.github.io/games/assets/kittents-preview.png">
+<meta name="theme-color" content="#eea365">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧺</text></svg>">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root { --bg:#fdf6f0; --ink:#5b4a52; --panel:#ffffff; --accent:#eea365; --accent-2:#8b72b7; --shadow:0 6px 20px rgba(120,90,110,.15); --n:6; }
+  @font-face { font-family:"Noto Color Emoji"; src:url("../assets/noto-emoji.woff2") format("woff2"); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html { min-height:100%; background:linear-gradient(160deg,#fdf6f0,#f4ecf8); }
+  body { margin:0; color:var(--ink); font-family:"Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif; padding:24px 24px 28px; }
+  button, select { font:inherit; }
+  button { touch-action:manipulation; }
+  button, a, select { outline-offset:4px; }
+  :focus-visible { outline:3px solid #77599f; }
+  button { -webkit-appearance:none; }
+  .shell { max-width:936px; margin:auto; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; }
+  .home { display:flex; align-items:center; gap:11px; color:var(--ink); text-decoration:none; font-size:.82rem; font-weight:700; }
+  .back { width:36px; height:36px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:var(--panel); color:var(--ink); font-size:1.2rem; box-shadow:var(--shadow); transition:transform .12s; }
+  .home:hover .back { transform:translateY(-2px); }
+  .edition { font-size:.68rem; text-transform:uppercase; letter-spacing:1.8px; color:#8b7683; font-weight:700; }
+  header { text-align:center; margin:14px 0 27px; }
+  .wordmark { display:flex; justify-content:center; align-items:center; gap:12px; }
+  .logo { font-size:2.7rem; transform:rotate(-9deg); }
+  h1 { font-size:clamp(2.5rem,6vw,3.25rem); font-weight:900; color:#aa5d32; letter-spacing:-1.5px; margin:0; }
+  .tag { margin:7px 0 0; font-size:.93rem; color:#8a7482; }
+  .layout { display:grid; grid-template-columns:minmax(0,590px) minmax(240px,1fr); gap:24px; align-items:start; }
+  .game { border-radius:24px; background:rgba(255,255,255,.9); padding:24px; box-shadow:var(--shadow); border:1px solid #fff; }
+  .modes { display:flex; border-radius:999px; padding:4px; background:#f3edf7; gap:4px; }
+  .mode { border:0; flex:1; padding:10px 7px; border-radius:999px; font-size:.85rem; font-weight:800; color:#8b768f; background:transparent; cursor:pointer; transition:background .15s,box-shadow .15s; }
+  .mode.active { background:#fff; color:#79579b; box-shadow:0 2px 7px #765a9215; }
+  .puzzlehead { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:22px 0 14px; }
+  .eyebrow { font-size:.65rem; font-weight:800; letter-spacing:1.6px; text-transform:uppercase; color:#a37f69; margin-bottom:3px; }
+  #dateTag { font-size:.85rem; font-weight:750; }
+  .size { display:flex; align-items:center; gap:7px; font-size:.72rem; color:#8c7684; }
+  select { border:1px solid #e7deed; border-radius:9px; background:#faf7fc; color:var(--ink); padding:6px; cursor:pointer; font-size:.76rem; max-width:128px; }
+  select:disabled { opacity:.7; cursor:default; }
+  .bar { display:flex; align-items:center; gap:8px; margin-bottom:16px; font-size:.82rem; font-weight:750; }
+  .count { background:#fff1e5; border:1px solid #f6dfcc; color:#93552f; border-radius:10px; padding:7px 10px; display:flex; align-items:center; gap:7px; }
+  .count b { font-variant-numeric:tabular-nums; }
+  .count small { font-size:.73rem; font-weight:600; }
+  .clock { margin-left:auto; background:#f5f0f9; color:#765896; padding:7px 12px; border-radius:10px; font-variant-numeric:tabular-nums; min-width:65px; text-align:center; }
+  .clock.ahead { color:#2f805a; }
+  .clock.behind { color:#ba4558; }
+  .sharechip { border:1px solid #e9dfef; border-radius:10px; background:#fff; padding:6px 10px; cursor:pointer; transition:transform .12s; }
+  .sharechip:hover { transform:translateY(-2px); }
+  .challenge { font-size:.8rem; padding:9px 12px; margin:0 0 12px; border-radius:10px; background:#f0e8f7; color:#765896; font-weight:750; }
+  .challenge.bad { color:#ac4354; background:#fff0ec; }
+  #board { display:grid; grid-template-columns:calc(var(--cell) * .54) repeat(var(--n),var(--cell)); gap:4px; padding:12px; border-radius:17px; background:#eee6f2; width:max-content; max-width:100%; margin:auto; box-shadow:inset 0 0 0 1px #e8dfed; touch-action:manipulation; min-height:250px; --cell:clamp(20px,calc((100vw - 115px - 4px * var(--n)) / (var(--n) + .54)),61px); }
+  #board.busy { position: relative; pointer-events: none; }
+  #board.busy::after { content: "🧺"; position: absolute; left: 50%; top: 50%; width: 64px; height: 64px;
+    margin: -32px 0 0 -32px; display: flex; align-items: center; justify-content: center; font-size: 38px;
+    background: var(--panel); border-radius: 50%; box-shadow: var(--shadow); z-index: 5;
+    opacity: 0; animation: busyin .2s .15s forwards, busyspin 1s linear infinite; }
+  @keyframes busyin { to { opacity: 1; } }
+  @keyframes busyspin { to { transform: rotate(360deg); } }
+  .corner { display:flex; align-items:center; justify-content:center; font-size:.7rem; color:#b09bbd; }
+  .clue { border:0; background:transparent; font-family:inherit; font-size:calc(var(--cell) * .32); color:#80638f; font-weight:800; padding:0; cursor:pointer; border-radius:7px; transition:background .15s,color .15s; }
+  .clue.col { height:calc(var(--cell) * .54); }
+  .clue:hover { background:#e3d8eb; }
+  .clue.done { color:#538566; }
+  .clue.bad { color:#b9324e; background:#f8dce2; }
+  .cell { border:0; padding:0; width:var(--cell); height:var(--cell); display:flex; align-items:center; justify-content:center; background:#fffdfa; border-radius:8px; font-size:calc(var(--cell) * .56); cursor:pointer; position:relative; box-shadow:0 2px 0 #ddcfe43b; transition:background .15s,transform .12s,box-shadow .15s; user-select:none; line-height:1; }
+  .cell:not(:disabled):hover { background:#fff0e2; transform:translateY(-2px); }
+  .cell:not(:disabled):active { transform:scale(.93); }
+  .cell.basket { background:#e3d8ef; cursor:default; }
+  .cell.cat { background:#ffe0bf; }
+  .cell.empty { background:#f4eff7; }
+  .cell .x { color:#9278a5; font-size:calc(var(--cell) * .34); font-family:system-ui,sans-serif; }
+  .cell.cat span { animation:pop .22s cubic-bezier(.3,1.6,.5,1); }
+  .cell.bad { box-shadow:inset 0 0 0 2px #c14f66; }
+  .cell:disabled { opacity:1; color:inherit; }
+  .board-note { font-size:.7rem; text-align:center; color:#95829b; margin:13px 0 17px; line-height:1.5; }
+  .tools { display:flex; align-items:center; justify-content:space-between; gap:8px; border-top:1px solid #f0e9f2; padding-top:16px; }
+  .marktools { display:flex; padding:3px; background:#f6f1f8; border-radius:10px; gap:2px; }
+  .tool { border:0; border-radius:8px; font-size:.75rem; font-weight:750; padding:7px 11px; background:transparent; color:#9683a0; cursor:pointer; }
+  .tool.active { background:#fff; box-shadow:0 2px 5px #6a477513; color:#77538f; }
+  .actions { display:flex; gap:5px; }
+  .btn { border:0; cursor:pointer; font-family:inherit; font-weight:750; font-size:.8rem; padding:10px 13px; border-radius:10px; background:#f5f0f8; color:#7d648c; transition:transform .12s; }
+  .btn:hover { transform:translateY(-2px); }
+  .btn:active { transform:scale(.97); }
+  .btn.primary { background:var(--accent-2); color:#fff; box-shadow:0 3px 8px #8b72b72b; }
+  .btn:disabled, .tool:disabled { opacity:.4; cursor:default; transform:none; }
+  .new { width:100%; margin-top:16px; padding:12px; font-size:.88rem; }
+  #status { font-size:.78rem; text-align:center; color:#8c6a77; margin:10px 0 0; line-height:1.5; }
+  #status:empty { display:none; }
+  aside { display:flex; flex-direction:column; gap:18px; }
+  .sidecard { background:rgba(255,255,255,.76); border:1px solid #fff; border-radius:20px; padding:23px; box-shadow:0 5px 18px #785a6e08; }
+  .sidecard h2 { font-size:1rem; margin:0 0 15px; letter-spacing:-.2px; }
+  .pair { display:flex; align-items:center; justify-content:center; margin:0 0 17px; gap:5px; }
+  .pair span { display:flex; align-items:center; justify-content:center; width:54px; height:54px; border-radius:12px; background:#ffe3c7; font-size:1.8rem; transform:rotate(-6deg); }
+  .pair span:last-child { background:#e6dbf0; transform:rotate(6deg); }
+  .ruleslist { padding:0; margin:0; list-style:none; counter-reset:rules; }
+  .ruleslist li { position:relative; padding-left:28px; font-size:.79rem; line-height:1.65; margin:0 0 13px; color:#8c7686; counter-increment:rules; }
+  .ruleslist li:last-child { margin-bottom:0; }
+  .ruleslist li::before { content:counter(rules); position:absolute; left:0; top:1px; width:19px; height:19px; border-radius:50%; background:#f8ecdf; color:#b27d50; font-size:.68rem; font-weight:800; text-align:center; line-height:19px; }
+  .ruleslist b { font-weight:750; color:#705969; }
+  .textbtn { border:0; background:transparent; color:#8b72b7; font-size:.75rem; font-weight:750; cursor:pointer; padding:0; margin-top:17px; }
+  .statshead { display:flex; align-items:center; justify-content:space-between; }
+  .statshead h2 { margin:0; }
+  .statshead span { font-size:.62rem; text-transform:uppercase; color:#a38fa9; letter-spacing:1px; }
+  .statgrid { display:grid; grid-template-columns:1fr 1fr; margin:18px 0 14px; }
+  .statgrid div + div { border-left:1px solid #eee5f2; padding-left:18px; }
+  .statgrid b { font-size:1.45rem; font-weight:800; display:block; color:#8b72b7; }
+  .statgrid small { display:block; font-size:.68rem; color:#9c8599; margin-top:3px; }
+  .daily-status { border-top:1px solid #eee5f2; padding-top:13px; font-size:.73rem; line-height:1.6; color:#968095; }
+  .daily-status.complete { color:#538566; }
+  .quiet { padding:0 13px; text-align:center; font-size:.72rem; line-height:1.7; color:#a18b9c; }
+  .quiet b { font-weight:700; color:#93799d; }
+  footer { margin-top:26px; text-align:center; font-size:.66rem; color:#ac97a3; letter-spacing:.3px; }
+  .overlay { position:fixed; inset:0; background:rgba(100,63,43,.4); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; backdrop-filter:blur(3px); }
+  .overlay.show { display:flex; }
+  .card { background:var(--panel); border-radius:24px; padding:28px; width:100%; max-width:390px; max-height:90vh; overflow:auto; box-shadow:0 20px 50px #59334733; text-align:center; animation:pop .3s ease; }
+  .card h2 { margin:6px 0 15px; color:#aa5d32; font-size:1.5rem; }
+  .card p { line-height:1.6; font-size:.85rem; text-align:left; color:#8b7484; }
+  .card .btn { margin-top:8px; }
+  .winicon { font-size:3.3rem; margin-bottom:8px; }
+  #winMsg { text-align:center; }
+  .winbtns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  @keyframes pop { 0% { transform:scale(.8); opacity:0; } 65% { transform:scale(1.05); } 100% { transform:scale(1); opacity:1; } }
+  @media (min-width:761px) { #board { --cell:clamp(27px,calc((min(100vw,984px) - 492px - 4px * var(--n)) / (var(--n) + .54)),61px); } }
+  @media (max-width:760px) { body { padding:17px 14px 26px; } .shell { max-width:550px; } .layout { grid-template-columns:1fr; gap:18px; } .edition { font-size:.6rem; letter-spacing:1px; } header { margin:16px 0 23px; } .game { padding:19px; } aside { display:grid; grid-template-columns:1fr 1fr; gap:14px; } .sidecard { padding:19px; } .quiet { grid-column:1/-1; } #board { --cell:clamp(20px,calc((min(100vw,578px) - 118px - 4px * var(--n)) / (var(--n) + .54)),61px); } }
+  @media (max-width:420px) { .edition { display:none; } .tag { font-size:.8rem; } .tools { gap:4px; } .tool { padding:7px 8px; } .btn { padding:9px 10px; } .sidecard { padding:17px; } aside { grid-template-columns:1fr; } .pair { float:right; margin:0 0 8px 12px; } .pair span { width:35px; height:35px; font-size:1.2rem; } .size > span { display:none; } }
+  @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } #board.busy::after { opacity:1; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="topbar" aria-label="Site navigation">
+    <a class="home" href="../index.html"><span class="back" aria-hidden="true">←</span> All games</a>
+    <span class="edition">The Kattenspellen collection</span>
+  </nav>
+  <header>
+    <div class="wordmark"><span class="logo" aria-hidden="true">🧺</span><h1>Kittents</h1></div>
+    <p class="tag">A basket for every cat. A little space for everyone.</p>
+  </header>
+  <main class="layout">
+    <section class="game" aria-label="Kittents puzzle">
+      <div class="modes" aria-label="Game mode">
+        <button class="mode active" id="dailyBtn" aria-pressed="true">Daily puzzle</button>
+        <button class="mode" id="freeBtn" aria-pressed="false">Free play</button>
+      </div>
+      <div class="puzzlehead">
+        <div><div class="eyebrow" id="modeLabel">Your daily moment of calm</div><div id="dateTag">Preparing your baskets…</div></div>
+        <label class="size"><span>Difficulty</span><select id="sizeInput" aria-label="Board size and difficulty" disabled>
+          <option value="5">5 × 5 · Easy</option><option value="6" selected>6 × 6 · Cozy</option><option value="7">7 × 7 · Tricky</option><option value="8">8 × 8 · Clever</option><option value="9">9 × 9 · Expert</option>
+        </select></label>
+      </div>
+      <div class="bar">
+        <div class="count"><span aria-hidden="true">🐱</span><b><span id="catCount">0</span> / <span id="catTotal">0</span></b><small>cats placed</small></div>
+        <div class="clock" id="clock" aria-label="Elapsed time">0:00</div>
+        <button id="shareChip" class="sharechip" title="Copy a link to this board" aria-label="Copy challenge link">🔗</button>
+      </div>
+      <div id="challenge" class="challenge" style="display:none" role="status"></div>
+      <div id="board" role="group" aria-label="Cat and basket puzzle grid"></div>
+      <p class="board-note" id="inputHint">Tap a square: cat → × → clear. Tap a number to mark its line.</p>
+      <div class="tools">
+        <div class="marktools" aria-label="Marking tool">
+          <button class="tool active" id="catTool" aria-pressed="true">🐱 Cat</button>
+          <button class="tool" id="emptyTool" aria-pressed="false">× Empty</button>
+        </div>
+        <div class="actions"><button class="btn" id="undoBtn" disabled>↶ Undo</button><button class="btn" id="resetBtn">↺ Reset</button></div>
+      </div>
+      <button class="btn primary new" id="newBtn">New puzzle <span aria-hidden="true">→</span></button>
+      <p id="status" role="status" aria-live="polite"></p>
+    </section>
+    <aside>
+      <section class="sidecard">
+        <div class="pair" aria-hidden="true"><span>🐱</span><span>🧺</span></div>
+        <h2>Make room for a nap.</h2>
+        <ol class="ruleslist">
+          <li>Pair every <b>basket with one cat</b>, right beside it — up, down, left, or right.</li>
+          <li>Cats need their space. They <b>never touch</b>, even at the corners.</li>
+          <li>The numbers tell you <b>how many cats</b> belong in each row and column.</li>
+        </ol>
+        <button class="textbtn" id="rulesBtn">A few more pointers ↗</button>
+      </section>
+      <section class="sidecard" id="stats" aria-label="Your statistics"></section>
+      <div class="quiet"><b>A little logic. A lot of purring.</b><br>Every puzzle is fully deducible.<br>Take your time — the cats will wait.</div>
+    </aside>
+  </main>
+  <footer>Free to play. No ads, no telemetry, no tracking. Just cats.</footer>
+</div>
+<div class="overlay" id="rulesOverlay" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+  <div class="card">
+    <div class="pair" aria-hidden="true"><span>🐱</span><span>🧺</span></div>
+    <h2 id="rulesTitle">A cozy place for every cat</h2>
+    <p>Place exactly one cat for every basket. Each cat and its basket must share an edge. Every cat belongs to <b>one basket</b>; a cat cannot be shared. A cat may sit beside other baskets, as long as everyone can be paired one-to-one.</p>
+    <p>Two cats may <b>never touch</b>, even diagonally. Row and column numbers count cats, not baskets.</p>
+    <p><b>Tap</b> a square to cycle cat → × → clear. Choose <b>× Empty</b> or right-click to leave an empty-space note. Tap a number to mark the rest of that line. Notes are optional.</p>
+    <p>Use arrow keys to move, Enter or Space to mark, and Ctrl/⌘ Z to undo. Orange squares hold cats; lavender squares hold the fixed baskets.</p>
+    <button class="btn primary" id="closeRules">Let's play</button>
+  </div>
+</div>
+<div class="overlay" id="winOverlay" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+  <div class="card">
+    <div class="winicon" aria-hidden="true">😻</div>
+    <h2 id="winTitle">Everybody's feline cozy!</h2>
+    <p id="winMsg"></p>
+    <div class="winbtns"><button class="btn" id="shareBtn">🔗 Copy challenge</button><button class="btn primary" id="closeWin">Lovely!</button></div>
+  </div>
+</div>
+<script>
+"use strict";
+
+function xmur3(str){ let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19); }
+  return function(){ h=Math.imul(h^(h>>>16),2246822507); h=Math.imul(h^(h>>>13),3266489909); return (h^=h>>>16)>>>0; }; }
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function makeRng(seed){ const s=xmur3(seed); return mulberry32(s()); }
+function shuffle(a,rng){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const MIN_N=5, MAX_N=9, DEFAULT_N=6, STORE_KEY="kittents_v1";
+function adjacent(N,i,diagonal=false){
+  const r=Math.floor(i/N), c=i%N, out=[];
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+    if((!dr&&!dc)||(!diagonal&&Math.abs(dr)+Math.abs(dc)!==1)) continue;
+    const nr=r+dr,nc=c+dc; if(nr>=0&&nc>=0&&nr<N&&nc<N) out.push(nr*N+nc);
+  }
+  return out;
+}
+function puzzleData(N,baskets,rowCounts,colCounts){
+  const occupied=new Set(baskets), neighbors=Array.from({length:N*N},(_,i)=>adjacent(N,i,true));
+  return {N,baskets:baskets.slice().sort((a,b)=>a-b),rowCounts,colCounts,neighbors,
+    options:baskets.slice().sort((a,b)=>a-b).map(i=>adjacent(N,i).filter(j=>!occupied.has(j))),
+    lines:[...Array.from({length:N},(_,r)=>Array.from({length:N},(_,c)=>r*N+c)),...Array.from({length:N},(_,c)=>Array.from({length:N},(_,r)=>r*N+c))]};
+}
+function pairing(p,g,domains=p.options){
+  const assigned=Array(p.baskets.length).fill(-1), owner=Array(p.N*p.N).fill(-1);
+  const seatCat=(cell,seen)=>{
+    for(let b=0;b<domains.length;b++) if(!seen.has(b)&&domains[b].includes(cell)){
+      seen.add(b); if(assigned[b]<0||seatCat(assigned[b],seen)){ assigned[b]=cell; return true; }
+    }
+    return false;
+  };
+  for(let i=0;i<g.length;i++) if(g[i]===2&&!seatCat(i,new Set())) return null;
+  for(let b=0;b<assigned.length;b++) if(assigned[b]>=0) owner[assigned[b]]=b;
+  const seatBasket=(b,seen)=>{
+    for(const cell of domains[b]) if(g[cell]!==1&&!seen.has(cell)){
+      seen.add(cell); if(owner[cell]<0||seatBasket(owner[cell],seen)){ owner[cell]=b; assigned[b]=cell; return true; }
+    }
+    return false;
+  };
+  for(let b=0;b<assigned.length;b++) if(assigned[b]<0&&!seatBasket(b,new Set())) return null;
+  return assigned;
+}
+function validBoard(p,g){
+  if(p.baskets.some(i=>g[i]===2)) return false;
+  const cats=g.flatMap((v,i)=>v===2?[i]:[]);
+  if(cats.length!==p.baskets.length||cats.some(i=>p.neighbors[i].some(j=>g[j]===2))) return false;
+  const targets=[...p.rowCounts,...p.colCounts];
+  if(p.lines.some((line,k)=>line.filter(i=>g[i]===2).length!==targets[k])) return false;
+  return !!pairing(p,g.map(v=>v===2?2:1));
+}
+function startingGrid(p){ const g=Array(p.N*p.N).fill(0); for(const b of p.baskets) g[b]=1; return g; }
+function propagate(p,input){
+  const g=input.slice(), targets=[...p.rowCounts,...p.colCounts];
+  let changed=true, dead=false;
+  const set=(i,v)=>{ if(g[i]&&g[i]!==v) dead=true; else if(!g[i]){ g[i]=v; changed=true; } };
+  for(const b of p.baskets) set(b,1);
+  while(changed&&!dead){
+    changed=false;
+    for(let i=0;i<g.length;i++) if(g[i]===2) for(const j of p.neighbors[i]) set(j,1);
+    for(let k=0;k<p.lines.length;k++){
+      const line=p.lines[k], cats=line.filter(i=>g[i]===2).length, unknown=line.filter(i=>g[i]===0), need=targets[k]-cats;
+      if(need<0||need>unknown.length){ dead=true; break; }
+      if(need===0||need===unknown.length) for(const i of unknown) set(i,need===0?1:2);
+    }
+    if(dead) break;
+    const domains=p.options.map(list=>list.filter(i=>g[i]!==1));
+    let edgesChanged=true;
+    while(edgesChanged&&!dead){
+      edgesChanged=false;
+      for(let b=0;b<domains.length;b++){
+        if(!domains[b].length){ dead=true; break; }
+        if(domains[b].length!==1) continue;
+        const cell=domains[b][0]; set(cell,2);
+        for(let a=0;a<domains.length;a++) if(a!==b&&domains[a].includes(cell)){
+          domains[a]=domains[a].filter(i=>i!==cell); edgesChanged=true;
+        }
+      }
+      for(let i=0;i<g.length&&!dead;i++) if(g[i]===2){
+        const choices=domains.flatMap((list,b)=>list.includes(i)?[b]:[]);
+        if(!choices.length){ dead=true; break; }
+        if(choices.length===1&&domains[choices[0]].length!==1){ domains[choices[0]]=[i]; edgesChanged=true; }
+      }
+    }
+    if(dead) break;
+    const possible=new Set(domains.flat());
+    for(let i=0;i<g.length;i++) if(!possible.has(i)) set(i,1);
+    if(!dead&&!pairing(p,g,domains)) dead=true;
+  }
+  return {grid:g,dead,complete:!dead&&g.every(Boolean)&&validBoard(p,g)};
+}
+function solve(p,input=startingGrid(p)){
+  let result=propagate(p,input), deductions=0;
+  while(!result.dead&&!result.complete){
+    let progress=false;
+    for(let i=0;i<result.grid.length;i++) if(!result.grid[i]){
+      const yes=result.grid.slice(); yes[i]=2;
+      const no=result.grid.slice(); no[i]=1;
+      const a=propagate(p,yes), b=propagate(p,no);
+      if(a.dead&&b.dead) return {...result,dead:true,complete:false,deductions};
+      if(a.dead||b.dead){
+        const forced=result.grid.slice(); forced[i]=a.dead?1:2;
+        result=propagate(p,forced); deductions++; progress=true; break;
+      }
+    }
+    if(!progress) break;
+  }
+  return {...result,deductions};
+}
+function generatePuzzle(N,rng){
+  if(!Number.isInteger(N)||N<MIN_N||N>MAX_N) throw new Error("Unsupported board size");
+  const count=Math.floor(N*N*.21), cells=Array.from({length:N*N},(_,i)=>i), neighbors=cells.map(i=>adjacent(N,i,true));
+  for(let attempt=0;attempt<1800;attempt++){
+    const cats=[], blocked=new Set();
+    for(const i of shuffle(cells.slice(),rng)) if(!blocked.has(i)){
+      cats.push(i); blocked.add(i); for(const j of neighbors[i]) blocked.add(j); if(cats.length===count) break;
+    }
+    if(cats.length!==count) continue;
+    const catSet=new Set(cats), baskets=[], used=new Set();
+    for(const i of shuffle(cats.slice(),rng)){
+      const choices=shuffle(adjacent(N,i).filter(j=>!catSet.has(j)&&!used.has(j)),rng);
+      if(!choices.length) break; baskets.push(choices[0]); used.add(choices[0]);
+    }
+    if(baskets.length!==count) continue;
+    const rows=Array(N).fill(0), cols=Array(N).fill(0);
+    for(const i of cats){ rows[Math.floor(i/N)]++; cols[i%N]++; }
+    const p=puzzleData(N,baskets,rows,cols), proof=solve(p);
+    if(proof.dead||!proof.complete) continue;
+    const solution=Array(N*N).fill(1); for(const i of cats) solution[i]=2;
+    if(!validBoard(p,solution)||proof.grid.some((v,i)=>v!==solution[i])) throw new Error("Puzzle proof disagrees with layout");
+    return {...p,solution,attempts:attempt+1,deductions:proof.deductions};
+  }
+  throw new Error("Could not generate a fully deducible puzzle");
+}
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmt(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function loadStore(){
+  const clean={best:{},solved:0,daily:{}};
+  try {
+    const s=JSON.parse(localStorage.getItem(STORE_KEY)); if(!s||typeof s!=="object") return clean;
+    if(Number.isSafeInteger(s.solved)&&s.solved>=0) clean.solved=s.solved;
+    for(let N=MIN_N;N<=MAX_N;N++) if(Number.isSafeInteger(s.best?.[N])&&s.best[N]>=0) clean.best[N]=s.best[N];
+    if(s.daily&&typeof s.daily==="object") for(const date of Object.keys(s.daily)) if(/^\d{4}-\d{2}-\d{2}$/.test(date)&&Number.isSafeInteger(s.daily[date])&&s.daily[date]>=0) clean.daily[date]=s.daily[date];
+  } catch {}
+  return clean;
+}
+function saveStore(s){ try { localStorage.setItem(STORE_KEY,JSON.stringify(s)); } catch {} }
+function recordWin(){
+  const s=loadStore(), date=state.seed.split("|")[0];
+  if(state.mode==="daily"&&s.daily[date]!==undefined) return;
+  s.solved++; if(s.best[state.N]===undefined||state.elapsed<s.best[state.N]) s.best[state.N]=state.elapsed;
+  if(state.mode==="daily") s.daily[date]=state.elapsed;
+  saveStore(s);
+}
+const puzzleCache=Object.create(null);
+let seedCounter=0, modalFocus=null;
+const state={N:DEFAULT_N,seed:null,puz:null,grid:[],started:false,elapsed:0,timerId:null,won:false,undo:[],challenge:null,mode:"daily",tool:"cat",focus:0};
+const boardEl=typeof document!=="undefined"?document.getElementById("board"):null;
+function puzzleFor(N,seed){
+  if(!puzzleCache[seed]||puzzleCache[seed].N!==N) puzzleCache[seed]=generatePuzzle(N,makeRng(seed));
+  return puzzleCache[seed];
+}
+let loadTok=0;
+function loadGame(N,seed){
+  const tok=++loadTok, go=()=>{ if(tok===loadTok){ setupGame(N,seed); boardEl.classList.remove("busy"); } };
+  if(puzzleCache[seed]) return go();
+  boardEl.classList.add("busy"); requestAnimationFrame(()=>setTimeout(go));
+}
+function setupGame(N,seed){
+  stopTimer(); hideOverlay("winOverlay"); state.puz=null; state.won=false;
+  document.getElementById("status").textContent="";
+  try { state.puz=puzzleFor(N,seed); }
+  catch(e){ boardEl.innerHTML=""; document.getElementById("status").textContent="This puzzle could not be prepared. Please try a new puzzle."; console.error(e); return; }
+  state.N=N; state.seed=seed; state.grid=startingGrid(state.puz); state.undo=[]; state.started=false; state.elapsed=0;
+  const done=state.mode==="daily"?loadStore().daily[seed.split("|")[0]]:undefined;
+  if(done!==undefined){ state.won=true; state.elapsed=done; state.grid=state.puz.solution.slice(); document.getElementById("status").textContent="Today's baskets are all cozy. Come back tomorrow, or enjoy a fresh puzzle."; }
+  state.focus=state.grid.findIndex((v,i)=>!state.puz.baskets.includes(i));
+  document.getElementById("clock").textContent=fmt(state.elapsed);
+  document.getElementById("sizeInput").value=N;
+  updateModes(); renderBoard(); paint(); renderStats(); updateChallengeUI();
+}
+function updateModes(){
+  const daily=state.mode==="daily";
+  for(const [id,active] of [["dailyBtn",daily],["freeBtn",state.mode==="free"]]){
+    const b=document.getElementById(id); b.classList.toggle("active",active); b.setAttribute("aria-pressed",String(active));
+  }
+  document.getElementById("sizeInput").disabled=daily;
+  document.getElementById("modeLabel").textContent=daily?"Your daily moment of calm":state.mode==="challenge"?"A little challenge between friends":"A fresh little escape";
+  document.getElementById("dateTag").textContent=daily?new Date(state.seed.split("|")[0]+"T12:00:00Z").toLocaleDateString("en",{month:"long",day:"numeric",timeZone:"UTC"})+" · "+(state.won?"Complete":"Daily puzzle"):state.mode==="challenge"?"Shared puzzle":"One more cozy corner";
+  document.getElementById("dailyBtn").textContent=loadStore().daily[todayStr()]!==undefined?"Daily puzzle ✓":"Daily puzzle";
+}
+function clueBtn(kind,i){
+  const b=document.createElement("button"), row=kind==="row";
+  b.className="clue "+kind; b.textContent=row?state.puz.rowCounts[i]:state.puz.colCounts[i]; b.dataset.kind=kind; b.dataset.i=i;
+  b.onclick=()=>fillLine(state.puz.lines[row?i:state.N+i]);
+  return b;
+}
+function renderBoard(){
+  const {N,baskets}=state.puz; boardEl.style.setProperty("--n",N); boardEl.innerHTML="";
+  boardEl.setAttribute("aria-label",N+" by "+N+" cat and basket puzzle");
+  const corner=document.createElement("div"); corner.className="corner"; corner.textContent="↘"; corner.setAttribute("aria-hidden","true"); boardEl.appendChild(corner);
+  for(let c=0;c<N;c++) boardEl.appendChild(clueBtn("col",c));
+  for(let r=0;r<N;r++){
+    boardEl.appendChild(clueBtn("row",r));
+    for(let c=0;c<N;c++){
+      const i=r*N+c, cell=document.createElement("button"); cell.className="cell"; cell.dataset.i=i; cell.type="button";
+      cell.disabled=baskets.includes(i); cell.tabIndex=i===state.focus?0:-1;
+      cell.onclick=()=>onCell(i); cell.oncontextmenu=e=>{ e.preventDefault(); onCell(i,true); };
+      cell.onkeydown=e=>moveFocus(e,i); cell.onfocus=()=>{
+        state.focus=i; boardEl.querySelectorAll(".cell").forEach(el=>{ el.tabIndex=el===cell?0:-1; });
+      };
+      boardEl.appendChild(cell);
+    }
+  }
+}
+function conflicts(){
+  const p=state.puz,g=state.grid,bad=new Set(),targets=[...p.rowCounts,...p.colCounts];
+  p.lines.forEach((line,k)=>{ if(line.filter(i=>g[i]===2).length>targets[k]) for(const i of line) if(g[i]===2) bad.add(i); });
+  for(let i=0;i<g.length;i++) if(g[i]===2){
+    if(p.neighbors[i].some(j=>g[j]===2)||!p.options.some(list=>list.includes(i))) bad.add(i);
+  }
+  if(!pairing(p,g.map((v,i)=>p.baskets.includes(i)?1:v===2?2:0))) for(let i=0;i<g.length;i++) if(g[i]===2) bad.add(i);
+  return bad;
+}
+function paint(){
+  if(!state.puz) return;
+  const p=state.puz,bad=conflicts();
+  boardEl.querySelectorAll(".cell").forEach(cell=>{
+    const i=+cell.dataset.i,v=state.grid[i],basket=p.baskets.includes(i),kind=basket?"basket":v===2?"cat":v===1?"empty":"";
+    cell.className="cell"+(kind?" "+kind:"")+(bad.has(i)?" bad":"");
+    const text=basket?"🧺":v===2?"🐱":v===1?"×":"";
+    if(cell.dataset.value!==text){ cell.innerHTML=text?'<span'+(v===1&&!basket?' class="x"':'')+'>'+text+'</span>':""; cell.dataset.value=text; }
+    cell.setAttribute("aria-label","Row "+(Math.floor(i/p.N)+1)+", column "+(i%p.N+1)+": "+(basket?"basket":v===2?"cat":v===1?"marked empty":"unmarked")+(bad.has(i)?", rule conflict":""));
+    cell.setAttribute("aria-invalid",String(bad.has(i))); cell.disabled=basket||state.won;
+  });
+  boardEl.querySelectorAll(".clue").forEach(b=>{
+    const row=b.dataset.kind==="row",i=+b.dataset.i,target=row?p.rowCounts[i]:p.colCounts[i],count=p.lines[row?i:p.N+i].filter(j=>state.grid[j]===2).length;
+    b.classList.toggle("done",count===target); b.classList.toggle("bad",count>target);
+    b.setAttribute("aria-label",(row?"Row ":"Column ")+(i+1)+": "+count+" of "+target+" cats. Mark remaining cells empty.");
+    b.disabled=state.won;
+  });
+  document.getElementById("catCount").textContent=state.grid.filter(v=>v===2).length;
+  document.getElementById("catTotal").textContent=p.baskets.length;
+  document.getElementById("undoBtn").disabled=state.won||!state.undo.length;
+  document.getElementById("resetBtn").disabled=state.won;
+  if(!state.won) document.getElementById("status").textContent=bad.size?"A little too cozy! Check the outlined cats and row or column counts.":"";
+}
+function moveFocus(e,i){
+  const delta={ArrowLeft:-1,ArrowRight:1,ArrowUp:-state.N,ArrowDown:state.N}[e.key]; if(!delta) return;
+  e.preventDefault(); let j=i;
+  while(true){
+    const next=j+delta;
+    if(next<0||next>=state.N*state.N||(Math.abs(delta)===1&&Math.floor(next/state.N)!==Math.floor(j/state.N))) return;
+    j=next; if(!state.puz.baskets.includes(j)) break;
+  }
+  const prev=boardEl.querySelector('[data-i="'+i+'"].cell'),next=boardEl.querySelector('[data-i="'+j+'"].cell');
+  prev.tabIndex=-1; next.tabIndex=0; next.focus();
+}
+function pushUndo(){ state.undo.push(state.grid.slice()); if(state.undo.length>100) state.undo.shift(); }
+function onCell(i,mark=false){
+  if(!state.puz||state.won||state.puz.baskets.includes(i)||boardEl.classList.contains("busy")) return;
+  if(!state.started) startTimer(); pushUndo();
+  const v=state.grid[i]; state.grid[i]=mark||state.tool==="empty"?(v===1?0:1):v===0?2:v===2?1:0;
+  paint(); checkWin();
+}
+function undo(){ if(state.won||!state.undo.length) return; state.grid=state.undo.pop(); paint(); }
+function fillLine(line){
+  if(!state.puz||state.won||boardEl.classList.contains("busy")) return;
+  const cells=line.filter(i=>!state.puz.baskets.includes(i)),unknown=cells.filter(i=>!state.grid[i]);
+  if(!unknown.length&&!cells.some(i=>state.grid[i]===1)) return;
+  if(!state.started) startTimer(); pushUndo();
+  for(const i of unknown.length?unknown:cells.filter(i=>state.grid[i]===1)) state.grid[i]=unknown.length?1:0;
+  paint();
+}
+function selectTool(tool){
+  state.tool=tool;
+  for(const [id,active] of [["catTool",tool==="cat"],["emptyTool",tool==="empty"]]){
+    const b=document.getElementById(id); b.classList.toggle("active",active); b.setAttribute("aria-pressed",String(active));
+  }
+  document.getElementById("inputHint").textContent=tool==="cat"?"Tap a square: cat → × → clear. Tap a number to mark its line.":"Tap a square to mark it empty. Tap again to clear your note.";
+}
+function checkWin(){ if(!state.won&&validBoard(state.puz,state.grid)) win(); }
+function win(){
+  state.won=true; stopTimer(); recordWin(); paint(); renderStats(); updateModes();
+  let msg="All "+state.puz.baskets.length+" cats found their cozy corner in "+fmt(state.elapsed)+".";
+  if(state.challenge) msg+=state.elapsed<=state.challenge.time?" You beat the "+fmt(state.challenge.time)+" challenge!":" Your friend's time was "+fmt(state.challenge.time)+". A lovely solve all the same.";
+  document.getElementById("winMsg").textContent=msg;
+  document.getElementById("status").textContent=state.mode==="daily"?"Daily complete. A fresh set of baskets arrives tomorrow.":"Purrfectly placed. Share this board or settle into a new one.";
+  showOverlay("winOverlay");
+}
+function startTimer(){
+  state.started=true; const start=Date.now()-state.elapsed*1000;
+  state.timerId=setInterval(()=>{ state.elapsed=Math.floor((Date.now()-start)/1000); document.getElementById("clock").textContent=fmt(state.elapsed); updateChallengeUI(); },250);
+}
+function stopTimer(){ if(state.timerId!==null){ clearInterval(state.timerId); state.timerId=null; } }
+function renderStats(){
+  const s=loadStore(),best=s.best[state.N],daily=s.daily[todayStr()];
+  document.getElementById("stats").innerHTML='<div class="statshead"><h2>Your cozy corner</h2><span>On this device</span></div><div class="statgrid"><div><b>'+s.solved+'</b><small>puzzles solved</small></div><div><b>'+(best===undefined?'—':fmt(best))+'</b><small>best · '+state.N+' × '+state.N+'</small></div></div><div class="daily-status'+(daily!==undefined?' complete':'')+'">'+(daily!==undefined?'✓ Daily complete · '+fmt(daily):'Today’s baskets are waiting for you.')+'</div>';
+}
+function clampN(){ const el=document.getElementById("sizeInput"),n=Math.max(MIN_N,Math.min(MAX_N,Math.round(+el.value||DEFAULT_N))); el.value=n; return n; }
+function newGame(){ clearChallenge(); state.mode="free"; const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+function dailyGame(){ clearChallenge(); state.mode="daily"; loadGame(DEFAULT_N,todayStr()+"|kittents"); }
+function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed).replace(/~/g,"%7E")+(state.won?"~"+state.elapsed:""); }
+function parseChallenge(){
+  const m=location.hash.match(/^#c=(\d+)~([^~]+)(?:~(\d+))?$/); if(!m||m[0]!==location.hash) return null;
+  let seed; try { seed=decodeURIComponent(m[2]); } catch { return null; }
+  const N=+m[1], time=m[3]===undefined?null:+m[3];
+  if(!Number.isSafeInteger(N)||N<MIN_N||N>MAX_N||!seed||seed.length>200||(time!==null&&(!Number.isSafeInteger(time)||time<0))) return null;
+  return {N,seed,time};
+}
+function copyChallenge(btn,copied,restore){
+  copied=copied||"✓ Copied!"; restore=restore||"🔗 Copy challenge";
+  const link=buildChallengeLink();
+  const ok=()=>{ btn.textContent=copied; setTimeout(()=>{ btn.textContent=restore; },1600); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok,()=>prompt("Copy this challenge link:",link));
+  else prompt("Copy this challenge link:",link);
+}
+function showChallenge(){ const el=document.getElementById("challenge");
+  el.className="challenge"; el.textContent=state.challenge?"🏁 Beat "+fmt(state.challenge.time):"🔗 Shared board"; el.style.display=""; }
+function showBadLink(){ const el=document.getElementById("challenge");
+  el.className="challenge bad"; el.textContent="⚠️ Bad link — daily board"; el.style.display=""; }
+function clearChallenge(){ state.challenge=null;
+  document.getElementById("challenge").style.display="none";
+  if(location.hash) history.replaceState(null,"",location.pathname); updateChallengeUI(); }
+function updateChallengeUI(){ const clk=document.getElementById("clock");
+  clk.classList.toggle("ahead", !!state.challenge && state.elapsed<=state.challenge.time);
+  clk.classList.toggle("behind", !!state.challenge && state.elapsed>state.challenge.time); }
+function showOverlay(id){ modalFocus=document.activeElement; const el=document.getElementById(id); el.classList.add("show"); el.querySelector("button").focus(); }
+function hideOverlay(id){
+  const el=document.getElementById(id); if(!el.classList.contains("show")) return;
+  el.classList.remove("show"); if(modalFocus?.isConnected&&!modalFocus.disabled) modalFocus.focus(); else document.getElementById("newBtn").focus();
+}
+function openInitial(){
+  const incoming=parseChallenge();
+  if(incoming){ state.mode="challenge"; state.challenge=incoming.time!==null?incoming:null; loadGame(incoming.N,incoming.seed); showChallenge(); }
+  else { state.mode="daily"; state.challenge=null; loadGame(DEFAULT_N,todayStr()+"|kittents"); if(location.hash&&location.hash!=="#selftest") showBadLink(); else document.getElementById("challenge").style.display="none"; }
+}
+function init(){
+  document.getElementById("newBtn").onclick=newGame;
+  document.getElementById("dailyBtn").onclick=dailyGame;
+  document.getElementById("freeBtn").onclick=()=>{ if(state.mode!=="free") newGame(); };
+  document.getElementById("sizeInput").onchange=newGame;
+  document.getElementById("undoBtn").onclick=undo;
+  document.getElementById("resetBtn").onclick=()=>{ if(state.puz&&!state.won&&confirm("Clear your cats and notes on this board?")) loadGame(state.N,state.seed); };
+  document.getElementById("catTool").onclick=()=>selectTool("cat");
+  document.getElementById("emptyTool").onclick=()=>selectTool("empty");
+  document.getElementById("rulesBtn").onclick=()=>showOverlay("rulesOverlay");
+  document.getElementById("closeRules").onclick=()=>hideOverlay("rulesOverlay");
+  document.getElementById("closeWin").onclick=()=>hideOverlay("winOverlay");
+  document.getElementById("shareBtn").onclick=function(){ if(state.puz) copyChallenge(this); };
+  document.getElementById("shareChip").onclick=function(){ if(state.puz) copyChallenge(this,"✓","🔗"); };
+  document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) hideOverlay(o.id); }));
+  document.addEventListener("keydown",e=>{
+    const modal=document.querySelector(".overlay.show");
+    if(modal){
+      if(e.key==="Escape") hideOverlay(modal.id);
+      if(e.key==="Tab"){
+        const buttons=modal.querySelectorAll("button"),first=buttons[0],last=buttons[buttons.length-1];
+        if(e.shiftKey&&document.activeElement===first){ e.preventDefault(); last.focus(); }
+        else if(!e.shiftKey&&document.activeElement===last){ e.preventDefault(); first.focus(); }
+      }
+    } else if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); }
+  });
+  window.addEventListener("hashchange",openInitial);
+  openInitial(); renderStats();
+}
+function runSelfTest(){
+  const assert=(condition,message)=>{ if(!condition) throw new Error("Kittents self-test: "+message); };
+  let total=0;
+  for(let N=MIN_N;N<=MAX_N;N++){
+    for(let sample=0;sample<12;sample++){
+      const seed="selftest|"+N+"|"+sample,p=generatePuzzle(N,makeRng(seed)),again=generatePuzzle(N,makeRng(seed));
+      assert(JSON.stringify(p)===JSON.stringify(again),"determinism "+seed);
+      const publicPuzzle=puzzleData(N,p.baskets,p.rowCounts,p.colCounts),proof=solve(publicPuzzle,startingGrid(publicPuzzle));
+      assert(!proof.dead&&proof.complete,"deduction from starting state "+seed);
+      assert(validBoard(publicPuzzle,p.solution),"valid layout "+seed);
+      assert(proof.grid.every((v,i)=>v===p.solution[i]),"proof matches layout "+seed);
+      assert(new Set(p.baskets).size===p.baskets.length,"distinct baskets "+seed);
+      assert(p.baskets.every(i=>p.solution[i]!==2),"cats outside baskets "+seed);
+      const fewer=p.solution.slice(); fewer[fewer.indexOf(2)]=1;
+      assert(!validBoard(publicPuzzle,fewer),"missing cat rejected"); total++;
+    }
+    console.log("Kittents "+N+"×"+N+": 12 deterministic, fully deducible boards");
+  }
+  const p=puzzleData(5,[1,3],[2,0,0,0,0],[1,0,0,0,1]),g=Array(25).fill(1); g[0]=2; g[4]=2;
+  assert(validBoard(p,g),"one-to-one paired layout");
+  const shared=puzzleData(5,[1,3],[1,0,1,0,0],[0,0,2,0,0]),bad=Array(25).fill(1); bad[2]=2; bad[12]=2;
+  assert(!validBoard(shared,bad),"a cat cannot serve two baskets");
+  console.log("Kittents self-test passed: "+total+" boards"); return true;
+}
+if(typeof document!=="undefined"&&boardEl) init();
+if(typeof location!=="undefined"&&(location.hostname==="localhost"||location.hash==="#selftest")) runSelfTest();
+</script>
+</body>
+</html>

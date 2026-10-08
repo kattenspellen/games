@@ -8,6 +8,7 @@ Games:
 - **Catwalk** (`catwalk/`) — a "Train Tracks"-style puzzle. See `catwalk/CLAUDE.md`.
 - **Meowsweeper** (`meowsweeper/`) — a "Minesweeper"-style puzzle. See `meowsweeper/CLAUDE.md`.
 - **Purrlink** (`purrlink/`) — a "Numberlink"-style puzzle. See `purrlink/CLAUDE.md`.
+- **Kittents** (`kittents/`) — a "Tents"-style puzzle. Pair cats and baskets one-to-one on orthogonally adjacent cells; cats cannot touch, even diagonally. Match the row and column cat counts. Difficulty is board size 5–9, default 6. Store outcomes and stats only under `kittents_v1`. Its signature is warm orange `#eea365`, secondary lavender `#8b72b7`, and representative emoji 🧺.
 
 Every game is built to the shared criteria below, so each is solid on its own and obviously part of the same family. Conventions that are strictly one game's live in that game's own `<game>/CLAUDE.md`.
 
