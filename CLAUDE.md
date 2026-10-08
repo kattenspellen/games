@@ -4,6 +4,7 @@ Cat-themed browser puzzle games. Each game is a self-contained riff on a classic
 
 Games:
 
+- **Kattenratten** (`kattenratten/`) — a "Tents"-style puzzle. See `kattenratten/CLAUDE.md`.
 - **Catoku** (`catoku/`) — a "Queens"-style puzzle. See `catoku/CLAUDE.md`.
 - **Catwalk** (`catwalk/`) — a "Train Tracks"-style puzzle. See `catwalk/CLAUDE.md`.
 - **Meowsweeper** (`meowsweeper/`) — a "Minesweeper"-style puzzle. See `meowsweeper/CLAUDE.md`.
