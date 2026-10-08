@@ -39,7 +39,7 @@ For any game with generated content:
 - **Seeded RNG.** Thread a seeded `rng` through generation. Never call `Math.random()` or `Date.now()` inside generation; `Math.random()` is fine for cosmetic-only choices (e.g. which cat emoji renders).
 - **Daily instance** keyed on the date (`"YYYY-MM-DD|…"`), identical for everyone that day; **fresh instances** from a distinct seed pattern.
 - **Logically solvable — the hard invariant.** Every served instance must be solvable by pure logical deduction — at every point the next move can be *proven*. Proof by contradiction counts as deduction: assume one move, play out its forced consequences under the direct rules, and if the board breaks, the opposite is proven. Keep it to one level (the consequences of an assumption use direct rules only, never a nested assumption); search and trial-and-error over branches are out. Generation must *prove* it with a deductive solver (human-style inference under the same rules the player plays) before serving — never assume it. An instance that isn't fully deducible is a bug, not a hard puzzle; regenerate or fail loudly rather than serve it.
-- **Say what it is, not what it isn't.** UI copy, meta, comments and docs describe fairness positively — "solvable by logic", "fully deducible". No negated taglines tacked on.
+- **Don't advertise it.** Solvability is implicit: player-facing copy (rules cards, hints, meta/og) never claims a board is solvable by logic. Comments and docs describe it positively ("fully deducible"), with no negated taglines.
 - **Prove from the player's actual starting state.** The deductive proof must begin from the exact state the player is handed — if the solver assumes an opening is already revealed, the served board must pre-reveal it too, or the player who deviates isn't playing the puzzle we proved. Relatedly, the first interaction must never be an unavoidable loss (e.g. Meowsweeper pre-reveals the safe opening region so the first dig can't hit a monster).
 
 ## One source of truth for rules
@@ -76,6 +76,7 @@ The look is shared so the games read as one family; a per-game palette makes eac
 - **Accessibility floor**: any glyph drawn on a colored region clears 3:1 contrast against every region color; region palettes keep all pairs distinct (ΔE ≥ 18) even when touching.
 - **Responsive, mobile-first**: viewport-scaled sizing (`clamp`), touch-friendly (`touch-action`, no tap-highlight), works on small screens.
 - **Naming**: each game's name is a cat pun.
+- **Rules card**: just the motions — the goal, the constraints, the controls, one short line each. No role-play or flavor text.
 
 **Per-game identity — vary exactly these:**
 
