@@ -167,7 +167,7 @@
 
   <div class="controls">
     <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
-      <input id="sizeInput" type="number" min="5" max="10" value="6"
+      <input id="sizeInput" type="number" min="5" max="10" value="7"
         style="width:3em;border:none;background:#fce4ee;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
     </label>
     <button class="btn primary" id="newBtn">🎲 New</button>
@@ -352,7 +352,7 @@ function generatePuzzle(N,rng){
 }
 
 /* ---------- config ---------- */
-const DEFAULT_N=6, MIN_N=5, MAX_N=10; // 10×10 needs ~15 pairs — hence 16 colours
+const DEFAULT_N=7, MIN_N=5, MAX_N=10; // 10×10 needs ~15 pairs — hence 16 colours
 // strand colours: all pairs ΔE76 ≥ 22 (endpoint number badges back them up)
 const COLORS=["#e5484d","#f28c28","#f2c230","#9ccc3a","#3fae5a","#22a39f","#3fa7e0","#3f63d6","#8a5fbf","#d152b8","#f27aa8","#9a6a44","#506400","#b0bc84","#ccace4","#80486c"];
 // pair cap: ≤9×9 stays at 12 (fewer pairs = harder); only 10×10 needs the full palette

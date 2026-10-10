@@ -11,7 +11,7 @@ The `<script>` runs top-to-bottom in commented sections: deterministic RNG → p
 - **Deterministic puzzles.** Seed with `makeRng` (`xmur3` + `mulberry32`). The daily board uses seed `"YYYY-MM-DD|7"`; "New game" uses a fresh `"rnd|N|counter|Date.now()"` seed. Puzzles are memoized in `puzzleCache` and rebuilt on every page load.
 - **Generation** (`generatePuzzle`): pick a solution (`genPlacement`), then `carveColoring` reshapes color regions, hill-climbing on how far the deductive solver gets, until the board is fully deducible.
 - **Deductive solver** (`logicalSolve`): human-style inference only (forced singles per row/col/region + locked-candidate confinement), no backtracking. Returns `{placed, placement}`; `placed===N` means fully deducible.
-- **Board size is the difficulty**: 4–12, default 7 (`DEFAULT_N`). `MAX_N=12`; larger boards fall back and take seconds.
+- **Board size is the difficulty**: 5–12, default 7 (`DEFAULT_N`). `MAX_N=12`; larger boards fall back and take seconds.
 
 ## Rules
 
@@ -27,7 +27,7 @@ Catoku's accents are pink `--accent:#f7a8c4` and blue `--accent-2:#3f8fd6` (the 
 
 ## Self-test
 
-`runSelfTest()` regenerates sizes `4,5,7,9,12`, asserts constraints, and reports solvability. Every size should print "logically solvable ✅"; "fell back at k/N" means the carver missed full deduction (raise the retry count or `maxIter` in `generatePuzzle`).
+`runSelfTest()` regenerates sizes `5,7,9,12`, asserts constraints, and reports solvability. Every size should print "logically solvable ✅"; "fell back at k/N" means the carver missed full deduction (raise the retry count or `maxIter` in `generatePuzzle`).
 
 Headless check (Node with a stubbed DOM):
 
