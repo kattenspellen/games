@@ -4,6 +4,7 @@ Cat-themed browser puzzle games. Each game is a self-contained riff on a classic
 
 Games:
 
+- **Kattenratten** (`kattenratten/`) — a "Tents"-style puzzle. See `kattenratten/CLAUDE.md`.
 - **Catoku** (`catoku/`) — a "Queens"-style puzzle. See `catoku/CLAUDE.md`.
 - **Catwalk** (`catwalk/`) — a "Train Tracks"-style puzzle. See `catwalk/CLAUDE.md`.
 - **Meowsweeper** (`meowsweeper/`) — a "Minesweeper"-style puzzle. See `meowsweeper/CLAUDE.md`.
@@ -39,7 +40,7 @@ For any game with generated content:
 - **Seeded RNG.** Thread a seeded `rng` through generation. Never call `Math.random()` or `Date.now()` inside generation; `Math.random()` is fine for cosmetic-only choices (e.g. which cat emoji renders).
 - **Daily instance** keyed on the date (`"YYYY-MM-DD|…"`), identical for everyone that day; **fresh instances** from a distinct seed pattern.
 - **Logically solvable — the hard invariant.** Every served instance must be solvable by pure logical deduction — at every point the next move can be *proven*. Proof by contradiction counts as deduction: assume one move, play out its forced consequences under the direct rules, and if the board breaks, the opposite is proven. Keep it to one level (the consequences of an assumption use direct rules only, never a nested assumption); search and trial-and-error over branches are out. Generation must *prove* it with a deductive solver (human-style inference under the same rules the player plays) before serving — never assume it. An instance that isn't fully deducible is a bug, not a hard puzzle; regenerate or fail loudly rather than serve it.
-- **Say what it is, not what it isn't.** UI copy, meta, comments and docs describe fairness positively — "solvable by logic", "fully deducible". No negated taglines tacked on.
+- **Don't advertise it.** Solvability is implicit: player-facing copy (rules cards, hints, meta/og) never claims a board is solvable by logic. Comments and docs describe it positively ("fully deducible"), with no negated taglines.
 - **Prove from the player's actual starting state.** The deductive proof must begin from the exact state the player is handed — if the solver assumes an opening is already revealed, the served board must pre-reveal it too, or the player who deviates isn't playing the puzzle we proved. Relatedly, the first interaction must never be an unavoidable loss (e.g. Meowsweeper pre-reveals the safe opening region so the first dig can't hit a monster).
 
 ## One source of truth for rules
@@ -53,7 +54,7 @@ A game's rules are usually encoded in several functions (generator, solver, vali
 
 ## Discoverability
 
-Every page carries the full head set: `<title>`, `<meta name="description">`, canonical URL, Open Graph tags (type/title/description/url/image), Twitter Card tags (`twitter:card` + `twitter:image` — `summary_large_image` for games, `summary` for the landing; title/description fall back to OG so links unfurl with an image in messaging apps and on X), `theme-color`, the inline-SVG emoji favicon, `apple-touch-icon`, and a per-game `manifest.webmanifest`. Add each game to the repo `sitemap.xml`.
+Every page carries the full head set: `<title>`, `<meta name="description">`, canonical URL, Open Graph tags (type/title/description/url/image), Twitter Card tags (`twitter:card` + `twitter:image` — `summary_large_image` for games, `summary` for the landing; title/description fall back to OG so links unfurl with an image in messaging apps and on X), `theme-color`, a `favicon.png` of the page's emoji, `apple-touch-icon`, and a per-game `manifest.webmanifest`. Add each game to the repo `sitemap.xml`.
 
 Each game also ships two shared social/README assets under `assets/`: a `<game>-preview.png` (700×700, the og/twitter image — a clean single frame of the game) and a `<game>-demo.gif` (linked in `README.md` at `width="400"`).
 
@@ -64,7 +65,7 @@ The look is shared so the games read as one family; a per-game palette makes eac
 **Family constants — never vary:**
 
 - **Font**: `"Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif`.
-- **Emoji**: Google's Noto, identical on every device — `assets/noto-emoji.woff2` is Noto Color Emoji subset to the emoji the pages use (COLRv1 for Chrome/Firefox + OT-SVG for Safari in one file), first in the font stack. Added an emoji? Rerun `uv run assets/build-emoji-font.py`, or it renders as the device's native emoji.
+- **Emoji**: Google's Noto, identical on every device — `assets/noto-emoji.woff2` is Noto Color Emoji subset to the emoji the pages use (COLRv1 for Chrome/Firefox + OT-SVG for Safari in one file), first in the font stack. Added an emoji? Rerun `uv run scripts/build-emoji-font.py`, or it renders as the device's native emoji. The favicons and `icon-*.png` home-screen icons are Noto too, drawn by `uv run scripts/build-icons.py` (needs Chrome; a new game or changed emoji goes in its `FAVICONS`).
 - **Background**: a soft `linear-gradient(160deg, …)` from cream `#fdf6f0` to a pale tint of the game's accent. The cream start and the softness are fixed; the second stop is per-game (see below).
 - **Neutrals**: `--ink:#5b4a52` (soft mauve text, not black), `--panel:#ffffff` (cards), `--shadow:0 6px 20px rgba(120,90,110,.15)`.
 - **Shape**: generous rounding (cards ~20px, buttons/cells ~8–12px) and soft shadows.
@@ -74,8 +75,9 @@ The look is shared so the games read as one family; a per-game palette makes eac
 - **Landing tile**: one `a.card` per game — emoji + `<h2>` name + one-line description.
 - **Mood**: soft, playful, pastel. Cats and emoji, never harsh.
 - **Accessibility floor**: any glyph drawn on a colored region clears 3:1 contrast against every region color; region palettes keep all pairs distinct (ΔE ≥ 18) even when touching.
-- **Responsive, mobile-first**: viewport-scaled sizing (`clamp`), touch-friendly (`touch-action`, no tap-highlight), works on small screens.
+- **Responsive, mobile-first**: viewport-scaled sizing, touch-friendly (`touch-action`, no tap-highlight, and `#board` sets `-webkit-user-select`/`-webkit-touch-callout: none` so a long-press never selects text on iOS), works on small screens. `--cell` budgets the whole board (body padding, board padding, gaps, clue column) against `100vw`, so even the largest size fits a 320px screen. A capture-phase `click` guard drops a stray second click within 50ms (some mobile browsers send one after a quick double tap), so a tap never counts twice; it's identical in every game.
 - **Naming**: each game's name is a cat pun.
+- **Rules card**: just the motions — the goal, the constraints, the controls, one short line each. No role-play or flavor text.
 
 **Per-game identity — vary exactly these:**
 

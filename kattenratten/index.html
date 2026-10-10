@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kattenratten — a &quot;Tents&quot;-style cat logic puzzle</title>
+<meta name="description" content="Kattenratten is a free daily logic puzzle: every rat gets its own cat right beside it, cats never touch, and each row and column has its count. No ads, no telemetry.">
+<link rel="canonical" href="https://kattenspellen.github.io/games/kattenratten/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Kattenratten — a &quot;Tents&quot;-style cat logic puzzle">
+<meta property="og:description" content="A free daily logic puzzle with cats. Every rat gets its own cat — cats never touch, and each row and column has its count. No ads, no telemetry.">
+<meta property="og:url" content="https://kattenspellen.github.io/games/kattenratten/">
+<meta property="og:image" content="https://kattenspellen.github.io/games/assets/kattenratten-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://kattenspellen.github.io/games/assets/kattenratten-preview.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="../icon-180.png">
+<meta name="theme-color" content="#f5b041">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root {
+    --bg: #fdf6f0;
+    --ink: #5b4a52;
+    --panel: #ffffff;
+    --accent: #f5b041;   /* amber — signature: theme-color */
+    --accent-2: #ffa8a7; /* rat-ear pink — primary button, share chip, stats */
+    --shadow: 0 6px 20px rgba(120,90,110,.15);
+    --n: 7;
+  }
+  /* Google's Noto emoji, subset to the ones we use, so cats look the same on every device */
+  @font-face { font-family: "Noto Color Emoji"; src: url("../assets/noto-emoji.woff2") format("woff2"); }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: linear-gradient(160deg,#fdf6f0,#ecebf8);
+    color: var(--ink);
+    font-family: "Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    min-height: 100%;
+  }
+  body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
+  h1 {
+    font-size: 2.2rem; margin: 8px 0 2px; letter-spacing: 1px;
+    font-weight: 900; color: var(--ink);
+  }
+  .tag { font-size: .85rem; opacity: .7; margin-bottom: 14px; }
+
+  .bar {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 10px 14px; margin: 4px 0 14px; font-weight: 800; font-size: 1.05rem;
+  }
+  .bar .clock { font-variant-numeric: tabular-nums; min-width: 66px; text-align: center;
+    background: var(--panel); padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); }
+  .clock.ahead { color: #2fa360; }
+  .clock.behind { color: #e5484d; }
+  .challenge {
+    padding: 6px 14px; border-radius: 12px;
+    font-weight: 800; font-size: .92rem; background: var(--panel);
+    box-shadow: 0 0 0 2px var(--accent-2) inset, var(--shadow);
+  }
+  .challenge.bad { box-shadow: 0 0 0 2px #e5484d inset, var(--shadow); color: #e5484d; }
+  .sharechip { background: var(--accent-2); color: var(--ink); border: none; cursor: pointer;
+    font-family: inherit; font-weight: 800; font-size: 1rem; padding: 6px 12px;
+    border-radius: 12px; box-shadow: var(--shadow); transition: transform .12s; }
+  .sharechip:hover { transform: translateY(-2px); }
+  .back { align-self: flex-start; width: 40px; height: 40px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; background: var(--panel); color: var(--ink);
+    text-decoration: none; font-weight: 900; font-size: 1.2rem; box-shadow: var(--shadow); transition: transform .12s; }
+  .back:hover { transform: translateY(-2px); }
+  .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(calc(var(--n) + 1), auto);
+    gap: 3px; background: #d6d4ef; padding: 10px; border-radius: 14px;
+    box-shadow: var(--shadow);
+    touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; /* no text selection or copy menu on long-press (iOS needs the prefixes) */
+    /* --cell fits the board to the screen: 100vw less 40px (body padding + scrollbar room), board padding, gaps and clue column */
+    --cell: min(calc((100vw - 60px - 3px * var(--n)) / (var(--n) + .72)), 56px);
+  }
+  /* loading: generation blocks the page, so a spinning emoji is painted first; it fades in late
+     (transform/opacity animate off the main thread) so fast boards never flash it */
+  #board.busy { position: relative; pointer-events: none; }
+  #board.busy::after { content: "🐭"; position: absolute; left: 50%; top: 50%; width: 64px; height: 64px;
+    margin: -32px 0 0 -32px; display: flex; align-items: center; justify-content: center; font-size: 38px;
+    background: var(--panel); border-radius: 50%; box-shadow: var(--shadow); z-index: 5;
+    opacity: 0; animation: busyin .2s .15s forwards, busyspin 1s linear infinite; }
+  @keyframes busyin { to { opacity: 1; } }
+  @keyframes busyspin { to { transform: rotate(360deg); } }
+  .clue {
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #4b4f9e; font-size: calc(var(--cell) * .44);
+    cursor: pointer; line-height: 1;
+    background: transparent; border: none; font-family: inherit;
+    transition: color .15s, transform .1s;
+  }
+  .clue:hover { color: var(--ink); }
+  .clue:active { transform: scale(.85); }
+  .clue.col { height: calc(var(--cell) * .72); }
+  .clue.row { width: calc(var(--cell) * .72); }
+  .clue.bad { color: #e5484d; }
+  .cell {
+    width: var(--cell); height: var(--cell);
+    border-radius: 9px; cursor: pointer; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--cell) * .56); font-weight: 900; line-height: 1;
+    transition: transform .1s ease, background .15s, box-shadow .15s;
+    position: relative;
+  }
+  .cell:hover { transform: translateY(-2px); }
+  .cell:active { transform: scale(.92); }
+  .cell.note { background: #e4e2f5; }
+  .cell .x { font-size: calc(var(--cell) * .4); color: var(--ink); }
+  .cell .cat { display: inline-block; font-size: calc(var(--cell) * .66); animation: pop .28s cubic-bezier(.3,1.6,.5,1); }
+  .cell.perch { background: #fff8e8; }
+  .cell.hiss { box-shadow: 0 0 0 3px #e5484d inset; }
+  /* a rat is part of the board, not a move: pink-tinted and untappable */
+  .cell.rat { background: #ffecec; cursor: default; transform: none; font-size: calc(var(--cell) * .6); }
+  @keyframes pop { 0%{transform:scale(.2) rotate(-14deg);opacity:0;} 60%{transform:scale(1.18) rotate(5deg);} 100%{transform:scale(1) rotate(0);} }
+
+  .controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 800; font-size: .9rem;
+    padding: 9px 16px; border-radius: 12px; background: var(--panel); color: var(--ink);
+    box-shadow: var(--shadow); transition: transform .12s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--accent-2); color: var(--ink); }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+
+
+  /* Stats */
+  .stats { margin-top: 26px; width: 100%; max-width: 420px; background: var(--panel);
+    border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .stats .statshead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .stats .statshead h2 { margin: 0; font-size: 1.1rem; }
+  .stats .chip { background: #ffdcdb; border-radius: 10px; padding: 6px 12px; font-size: .85rem; font-weight: 800; }
+  .stats .chip b { color: #b83b45; }
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th, td { padding: 5px 4px; text-align: center; }
+  th { opacity: .6; font-weight: 800; }
+  td.d { text-align: left; opacity: .8; }
+  .ok { color: #4caf50; font-weight: 800; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(85,60,25,.4);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .card {
+    background: var(--panel); border-radius: 20px; padding: 26px; max-width: 360px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); text-align: center; animation: pop .3s ease;
+  }
+  .card h2 { margin: 6px 0 10px; }
+  .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
+    animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
+</style>
+</head>
+<body>
+  <a class="back" href="../index.html" title="All games" aria-label="All games">←</a>
+  <h1>Kattenratten</h1>
+  <div class="tag" id="dateTag"></div>
+
+  <div class="bar">
+    <div title="Cats placed">🐱 <span id="catCount">0</span>/<span id="catTotal">0</span></div>
+    <div class="clock" id="clock">0:00</div>
+    <div id="challenge" class="challenge" style="display:none"></div>
+    <button id="shareChip" class="sharechip" title="Copy a link to this board">🔗</button>
+  </div>
+
+  <div id="board"></div>
+
+  <div class="controls">
+    <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
+      <input id="sizeInput" type="number" min="5" max="12" value="7"
+        style="width:3em;border:none;background:#ffdcdb;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
+    </label>
+    <button class="btn primary" id="newBtn">🎲 New</button>
+    <button class="btn" id="undoBtn">↶ Undo</button>
+    <button class="btn" id="resetBtn">↺ Reset</button>
+    <button class="btn" id="rulesBtn">?</button>
+  </div>
+  <div class="stats" id="stats"></div>
+
+  <div class="overlay" id="rulesOverlay">
+    <div class="card">
+      <h2>How to play</h2>
+      <p>Every rat 🐭 gets its own <b>cat 🐱</b>, right next to it (above, below, left or right).</p>
+      <p>Cats can't <b>touch</b>, not even diagonally.</p>
+      <p>The <b>numbers</b> indicate how many cats are in each row and column.</p>
+      <p>Tap a square for an <b>✕</b> note, again for a cat, again to clear. Tap a number to ✕ the rest of its line.</p>
+      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOverlay">
+    <div class="card">
+      <div style="font-size:3rem" id="winCat">😻</div>
+      <h2 id="winTitle">Purrfect!</h2>
+      <p style="text-align:center" id="winMsg"></p>
+      <div class="winbtns">
+        <button class="btn" id="shareBtn">🔗 Copy challenge</button>
+        <button class="btn primary" onclick="document.getElementById('winOverlay').classList.remove('show')">Yay!</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+/* ---------- deterministic RNG ---------- */
+function xmur3(str){ let h=1779033703^str.length;
+  for(let i=0;i<str.length;i++){ h=Math.imul(h^str.charCodeAt(i),3432918353); h=(h<<13)|(h>>>19); }
+  return function(){ h=Math.imul(h^(h>>>16),2246822507); h=Math.imul(h^(h>>>13),3266489909); return (h^=h>>>16)>>>0; }; }
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function makeRng(seed){ const s=xmur3(seed); return mulberry32(s()); }
+
+/* ---------- puzzle generation (Tents-style, fully deducible) ---------- */
+// A cell id is r*N+c. rat[cell]: a 🐭 there. The rules: (1) each rat has its own cat directly above,
+// below, left or right of it, paired one-to-one; (2) cats never touch, not even diagonally; (3) each
+// row and column holds exactly its count of cats.
+function adj(N,cell){ const r=(cell/N)|0, c=cell%N, out=[];
+  if(r>0) out.push(cell-N); if(r<N-1) out.push(cell+N); if(c>0) out.push(cell-1); if(c<N-1) out.push(cell+1); return out; }
+function adj8(N,cell){ const r=(cell/N)|0, c=cell%N, out=[];
+  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ const nr=r+dr, nc=c+dc;
+    if((dr||dc)&&nr>=0&&nc>=0&&nr<N&&nc<N) out.push(nr*N+nc); }
+  return out; }
+
+// direct rules to a fixpoint. st[cell]: 0 unknown, 1 cat, 2 no cat (rats start at 2). false = contradiction.
+// (1) no touch: a cat empties its 8 neighbours (touching cats = dead); (2) counts: a line with its n cats
+// empties the rest, one with exactly n cats+unknowns fills them; (3) pairing, rebuilt each pass: a cat with
+// one rat beside it that no other cat holds claims it (none = dead); a rat whose only candidate is a cat
+// with no rat yet is that cat's; a rat with no candidate is dead, one with a single unknown candidate makes
+// it a cat; an unknown whose rats are all held (or that has none) can't be a cat.
+function propagate(puz,st){
+  const {N,rat,a4,a8,lines}=puz, NN=N*N;
+  for(let ch=true; ch;){ ch=false;
+    for(let x=0;x<NN;x++) if(st[x]===1) for(const y of a8[x]){ if(st[y]===1) return false; if(st[y]===0){ st[y]=2; ch=true; } }
+    for(const {cells,n} of lines){ let cats=0; const unk=[];
+      for(const x of cells){ if(st[x]===1) cats++; else if(st[x]===0) unk.push(x); }
+      if(cats>n||cats+unk.length<n) return false;
+      if(unk.length&&(cats===n||cats+unk.length===n)){ for(const x of unk) st[x]=cats===n?2:1; ch=true; } }
+    const owner=new Int32Array(NN).fill(-1), owns=new Int32Array(NN).fill(-1);
+    const cand=b=>a4[b].filter(y=>st[y]===0||(st[y]===1&&owns[y]<0));
+    for(let more=true; more;){ more=false;
+      for(let x=0;x<NN;x++){
+        if(st[x]===1&&owns[x]<0){ const free=a4[x].filter(b=>rat[b]&&owner[b]<0);
+          if(!free.length) return false;
+          if(free.length===1){ owner[free[0]]=x; owns[x]=free[0]; more=true; } }
+        else if(rat[x]&&owner[x]<0){ const c=cand(x);
+          if(!c.length) return false;
+          if(c.length===1&&st[c[0]]===1){ owner[x]=c[0]; owns[c[0]]=x; more=true; } } } }
+    for(let x=0;x<NN;x++){
+      if(rat[x]){ if(owner[x]<0){ const c=cand(x); if(c.length===1&&st[c[0]]===0){ st[c[0]]=1; ch=true; } } }
+      else if(st[x]===0&&a4[x].every(b=>!rat[b]||owner[b]>=0)){ st[x]=2; ch=true; } } }
+  return true; }
+
+// human-style deductive solver from the bare board: the direct rules, plus one-level proof by
+// contradiction when they stall — assume a cell is (or isn't) a cat, propagate; if that breaks, the
+// opposite is proven. Never nests. complete ⇒ every cell forced ⇒ unique. steps = contradictions used.
+function solve(puz){
+  const {N,rat}=puz, st=new Int8Array(N*N); let steps=0;
+  for(let x=0;x<N*N;x++) if(rat[x]) st[x]=2;
+  let ok=propagate(puz,st);
+  probe: while(ok){
+    for(let x=0;x<N*N;x++){ if(st[x]!==0) continue;
+      for(const v of [1,2]){ const t=st.slice(); t[x]=v;
+        if(!propagate(puz,t)){ st[x]=3-v; steps++; ok=propagate(puz,st); continue probe; } } }
+    break; }
+  let complete=ok; for(let x=0;x<N*N&&complete;x++) if(st[x]===0) complete=false;
+  return {complete, st, steps}; }
+
+// cats placed on shuffled cells (never touching, never on a rat), each turning a random free side
+// neighbour into its rat, until ~DENSITY of the board is cats; counts derived from them. Kept only if
+// solve completes from the bare board; throws (never serves) after 500 tries — self-test never hits it.
+const DENSITY=0.2; // cat share of the board
+function generatePuzzle(N,rng){
+  const shuffle=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  const NN=N*N, a4=[], a8=[], target=Math.round(NN*DENSITY);
+  for(let x=0;x<NN;x++){ a4.push(adj(N,x)); a8.push(adj8(N,x)); }
+  for(let tries=0;tries<500;tries++){
+    const rat=new Uint8Array(NN), cats=new Set(), pair=new Map(); // pair: rat → its cat
+    for(const x of shuffle([...Array(NN).keys()])){ if(cats.size>=target) break;
+      if(rat[x]||cats.has(x)||a8[x].some(y=>cats.has(y))) continue;
+      const free=a4[x].filter(y=>!rat[y]&&!cats.has(y)); if(!free.length) continue;
+      const b=free[Math.floor(rng()*free.length)]; rat[b]=1; cats.add(x); pair.set(b,x); }
+    const rowCounts=Array(N).fill(0), colCounts=Array(N).fill(0), lines=[];
+    for(const x of cats){ rowCounts[(x/N)|0]++; colCounts[x%N]++; }
+    for(let i=0;i<N;i++){ const row=[], col=[]; for(let j=0;j<N;j++){ row.push(i*N+j); col.push(j*N+i); }
+      lines.push({cells:row,n:rowCounts[i]},{cells:col,n:colCounts[i]}); }
+    const puz={N,rat,cats,pair,rowCounts,colCounts,a4,a8,lines};
+    if(solve(puz).complete) return puz;
+  }
+  throw new Error("Kattenratten: no deducible board for "+N); }
+
+// what the player's board breaks (grid: 0 empty, 1 ✕, 2 cat): touching cats, cats with no rat
+// beside them, and over-full lines
+function conflicts(puz,grid){ const {N,rat,a4,a8,rowCounts,colCounts}=puz, hiss=new Set(), lost=new Set(), badRow=new Set(), badCol=new Set();
+  const rows=Array(N).fill(0), cols=Array(N).fill(0);
+  for(let x=0;x<N*N;x++) if(grid[x]===2){ rows[(x/N)|0]++; cols[x%N]++;
+    if(a8[x].some(y=>grid[y]===2)) hiss.add(x); if(!a4[x].some(b=>rat[b])) lost.add(x); }
+  for(let i=0;i<N;i++){ if(rows[i]>rowCounts[i]) badRow.add(i); if(cols[i]>colCounts[i]) badCol.add(i); }
+  return {hiss,lost,badRow,badCol,rows,cols}; }
+// win = counts exact, no cats touching, and every rat matched to its own side-adjacent cat
+// (Kuhn's augmenting paths; cats = rats since the counts sum to it). The board is unique, so rules suffice.
+function isSolved(puz,grid){ const {N,rat,a4,rowCounts,colCounts}=puz, {hiss,rows,cols}=conflicts(puz,grid);
+  if(hiss.size) return false;
+  for(let i=0;i<N;i++) if(rows[i]!==rowCounts[i]||cols[i]!==colCounts[i]) return false;
+  const mate=new Map(); // rat → cat
+  const aug=(c,seen)=>{ for(const b of a4[c]){ if(!rat[b]||seen.has(b)) continue; seen.add(b);
+    if(!mate.has(b)||aug(mate.get(b),seen)){ mate.set(b,c); return true; } } return false; };
+  for(let x=0;x<N*N;x++) if(grid[x]===2&&!aug(x,new Set())) return false;
+  return true; }
+
+/* ---------- config ---------- */
+const DEFAULT_N=7, MIN_N=5, MAX_N=12; // board size is the difficulty
+const WINCATS=["😻","😸","😺","🐱","😹"];
+const WINPUNS=["Purrfect!","Meow-velous!","Paw-some!","Feline good!","Claw-some!","Purr-fectly played!","The cat's whiskers!","Hiss-toric win!","Totally paw-sitive!","You're kitten me!"];
+const STORE_KEY="kattenratten_v1";
+
+/* ---------- date ---------- */
+function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+
+/* ---------- storage ---------- */
+// { best:{ N: seconds }, solved: count } — best win time per size + total solved (never the puzzle)
+function loadStore(){ try{ const s=JSON.parse(localStorage.getItem(STORE_KEY)); return (s&&s.best)?s:{best:{},solved:0}; }catch(e){ return {best:{},solved:0}; } }
+function saveStore(s){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(s)); }catch(e){} }
+function recordWin(N,time){
+  const s=loadStore(); s.solved=(s.solved||0)+1;
+  if(s.best[N]===undefined||time<s.best[N]) s.best[N]=time;
+  saveStore(s);
+}
+
+/* ---------- state ---------- */
+const puzzleCache={};
+let seedCounter=0;
+const state={ N:DEFAULT_N, seed:null, puz:null, grid:null,
+  started:false, elapsed:0, timerId:null, won:false, undo:[], challenge:null };
+
+function puzzleFor(N,seed){
+  if(!puzzleCache[seed]) puzzleCache[seed]=generatePuzzle(N, makeRng(seed));
+  return puzzleCache[seed];
+}
+
+/* ---------- render ---------- */
+const boardEl=document.getElementById("board");
+// big boards can take a while to generate: paint the spinner, then build. A newer load
+// cancels a pending one; cached boards load at once.
+let loadTok=0;
+function loadGame(N,seed){
+  const tok=++loadTok, go=()=>{ if(tok===loadTok){ setupGame(N,seed); boardEl.classList.remove("busy"); } };
+  if(puzzleCache[seed]) return go();
+  boardEl.classList.add("busy"); requestAnimationFrame(()=>setTimeout(go));
+}
+function setupGame(N,seed){
+  stopTimer();
+  state.N=N; state.seed=seed; state.puz=puzzleFor(N,seed);
+  state.grid=Array(N*N).fill(0);
+  state.started=false; state.elapsed=0; state.won=false; state.undo=[];
+  document.getElementById("clock").textContent="0:00"; updateChallengeUI();
+  renderBoard(); updateUndo();
+}
+function clueBtn(kind,i){ // tap a row/col number to ✕ the rest of that line
+  const {N,rat}=state.puz, b=document.createElement("button");
+  b.className="clue "+kind;
+  b.textContent=(kind==="row"?state.puz.rowCounts:state.puz.colCounts)[i];
+  b.dataset.kind=kind; b.dataset.i=i;
+  b.onclick=()=>{ const cells=[];
+    for(let j=0;j<N;j++){ const x=kind==="row"?i*N+j:j*N+i; if(!rat[x]) cells.push(x); }
+    fillLine(cells); };
+  return b;
+}
+function renderBoard(){
+  const {N,rat}=state.puz;
+  boardEl.style.setProperty("--n",N);
+  document.querySelector(":root").style.setProperty("--n",N);
+  boardEl.innerHTML="";
+  boardEl.appendChild(document.createElement("div")); // corner
+  for(let c=0;c<N;c++) boardEl.appendChild(clueBtn("col",c));
+  for(let r=0;r<N;r++){
+    boardEl.appendChild(clueBtn("row",r));
+    for(let c=0;c<N;c++){ const cell=r*N+c, el=document.createElement("div");
+      el.className="cell"; el.dataset.cell=cell;
+      if(!rat[cell]) el.onclick=()=>onCell(cell);
+      boardEl.appendChild(el); }
+  }
+  paint();
+}
+function paint(){
+  const {rat,cats}=state.puz, g=state.grid, {hiss,lost,badRow,badCol}=conflicts(state.puz,g);
+  let placed=0;
+  boardEl.querySelectorAll(".cell").forEach(el=>{
+    const x=+el.dataset.cell;
+    if(rat[x]){ el.className="cell rat"; el.textContent="🐭"; return; }
+    if(g[x]===2) placed++;
+    el.className="cell"+(g[x]===1?" note":g[x]===2?" perch":"")+(hiss.has(x)||lost.has(x)?" hiss":"");
+    const html = g[x]===2 ? '<span class="cat">'+(hiss.has(x)?"😾":lost.has(x)?"🙀":"🐱")+'</span>'
+      : g[x]===1 ? '<span class="x">✕</span>' : "";
+    if(el.dataset.v!==html){ el.innerHTML=html; el.dataset.v=html; } // only touch changed cells, so the pop plays once
+  });
+  boardEl.querySelectorAll(".clue").forEach(b=>b.classList.toggle("bad",(b.dataset.kind==="row"?badRow:badCol).has(+b.dataset.i)));
+  document.getElementById("catCount").textContent=placed;
+  document.getElementById("catTotal").textContent=cats.size;
+}
+
+/* ---------- interaction ---------- */
+// tap cycles empty → ✕ note → cat → empty
+function onCell(cell){
+  if(state.won) return;
+  if(!state.started) startTimer();
+  pushUndo();
+  state.grid[cell]=(state.grid[cell]+1)%3;
+  paint(); updateUndo(); checkWin();
+}
+// ✕ every empty square in a line; if none are empty, clear its ✕ notes (cats untouched). One undo step.
+function fillLine(cells){
+  if(state.won) return;
+  if(!state.started) startTimer();
+  pushUndo();
+  const g=state.grid, empty=cells.filter(x=>g[x]===0);
+  if(empty.length) for(const x of empty) g[x]=1;
+  else for(const x of cells) if(g[x]===1) g[x]=0;
+  paint(); updateUndo(); checkWin();
+}
+// undo stack: one snapshot per action. Keep the last 10.
+function pushUndo(){ state.undo.push(state.grid.slice()); if(state.undo.length>10) state.undo.shift(); }
+function undo(){ if(state.won||!state.undo.length) return; state.grid=state.undo.pop(); paint(); updateUndo(); }
+function updateUndo(){ document.getElementById("undoBtn").disabled=!state.undo.length; }
+function checkWin(){ if(isSolved(state.puz,state.grid)) win(); }
+function win(){
+  const N=state.puz.N;
+  state.won=true; stopTimer();
+  recordWin(N,state.elapsed);
+  renderStats();
+  document.getElementById("winCat").textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
+  document.getElementById("winTitle").textContent=WINPUNS[Math.floor(Math.random()*WINPUNS.length)];
+  let msg="Every rat has its cat! You solved the "+N+"×"+N+" board in "+fmt(state.elapsed)+".";
+  if(state.challenge) msg += state.elapsed<=state.challenge.time
+    ? " 🏆 You beat the "+fmt(state.challenge.time)+" challenge!"
+    : " 🐭 The target was "+fmt(state.challenge.time)+" — try again!";
+  document.getElementById("winMsg").textContent=msg;
+  document.getElementById("winOverlay").classList.add("show");
+  confetti();
+}
+function confetti(){
+  for(let i=0;i<24;i++){
+    const s=document.createElement("div");
+    s.className="confetti"; s.textContent=WINCATS[Math.floor(Math.random()*WINCATS.length)];
+    s.style.left=Math.random()*100+"vw";
+    s.style.animationDuration=(1.6+Math.random()*1.8)+"s";
+    s.style.animationDelay=(Math.random()*.5)+"s";
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),4000);
+  }
+}
+
+/* ---------- timer ---------- */
+function fmt(s){ return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+function startTimer(){ state.started=true; state.timerId=setInterval(()=>{ state.elapsed++;
+  document.getElementById("clock").textContent=fmt(state.elapsed); updateChallengeUI(); },1000); }
+function stopTimer(){ if(state.timerId){ clearInterval(state.timerId); state.timerId=null; } }
+
+/* ---------- stats ---------- */
+function renderStats(){
+  const s=loadStore(); const el=document.getElementById("stats");
+  const sizes=Object.keys(s.best).map(Number).sort((a,b)=>a-b);
+  let html='<div class="statshead"><h2>Your stats</h2>'+
+    '<div class="chip">Solved <b>'+(s.solved||0)+'</b></div></div>';
+  if(sizes.length){
+    html+='<table><tr><th class="d">Board</th><th>Best time</th></tr>';
+    for(const N of sizes) html+='<tr><td class="d">'+N+'×'+N+'</td><td class="ok">'+fmt(s.best[N])+'</td></tr>';
+    html+='</table>';
+  } else html+='<p style="opacity:.6">No rats caught yet — solve one to start your record!</p>';
+  el.innerHTML=html;
+}
+
+/* ---------- challenge links ---------- */
+// Shareable board: the hash carries only N ~ seed (~ challenger-time, once solved). The receiver
+// re-runs the generator (never the solution) — same seed ⇒ same board anywhere.
+function buildChallengeLink(){ return location.origin+location.pathname+"#c="+state.N+"~"+encodeURIComponent(state.seed)+(state.won?"~"+state.elapsed:""); }
+function parseChallenge(){
+  const m=location.hash.match(/^#c=(\d+)~([^~]+)(?:~(\d+))?$/); if(!m) return null;
+  const N=+m[1], seed=decodeURIComponent(m[2]), time=m[3]===undefined?null:+m[3];
+  if(N<MIN_N||N>MAX_N||!seed||(time!==null&&!isFinite(time))) return null; // out of range / unparseable ⇒ decline
+  return {N,seed,time};
+}
+function copyChallenge(btn,copied,restore){
+  copied=copied||"✓ Copied!"; restore=restore||"🔗 Copy challenge";
+  const link=buildChallengeLink();
+  const ok=()=>{ btn.textContent=copied; setTimeout(()=>{ btn.textContent=restore; },1600); };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok,()=>prompt("Copy this challenge link:",link));
+  else prompt("Copy this challenge link:",link);
+}
+function showChallenge(){ const el=document.getElementById("challenge");
+  el.className="challenge"; el.textContent=state.challenge?"🏁 Beat "+fmt(state.challenge.time):"🔗 Shared board"; el.style.display=""; }
+function showBadLink(){ const el=document.getElementById("challenge");
+  el.className="challenge bad"; el.textContent="⚠️ Bad link — daily board"; el.style.display=""; }
+function clearChallenge(){ state.challenge=null;
+  document.getElementById("challenge").style.display="none";
+  if(location.hash) history.replaceState(null,"",location.pathname); updateChallengeUI(); }
+function updateChallengeUI(){ const clk=document.getElementById("clock");
+  clk.classList.toggle("ahead", !!state.challenge && state.elapsed<=state.challenge.time);
+  clk.classList.toggle("behind", !!state.challenge && state.elapsed>state.challenge.time); }
+
+/* ---------- wire up ---------- */
+const sizeInput=document.getElementById("sizeInput");
+function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
+function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+// click the backdrop (outside the card) to dismiss any overlay
+document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
+// a quick double tap can make mobile browsers fire a stray extra click ~25ms later; drop it so a tap never counts twice
+let lastClick=-1e9; document.addEventListener("click",e=>{ if(e.timeStamp-lastClick<50){ e.stopPropagation(); e.preventDefault(); } lastClick=e.timeStamp; },true);
+document.getElementById("dateTag").textContent="A cat for every rat, any size "+MIN_N+"–"+MAX_N;
+document.getElementById("newBtn").onclick=newGame;
+document.getElementById("undoBtn").onclick=undo;
+document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
+document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
+document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
+document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
+const incoming=parseChallenge();
+if(incoming){ if(incoming.time!==null) state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
+else { loadGame(DEFAULT_N, todayStr()+"|kattenratten"); if(location.hash.indexOf("#c=")===0) showBadLink(); } // daily default board
+renderStats();
+
+/* ---------- self-check (console) ---------- */
+function runSelfTest(){
+  let ok=true;
+  for(let N=MIN_N;N<=MAX_N;N++){
+    const puz=generatePuzzle(N, makeRng("test|"+N)), {rat,cats,pair,a4,rowCounts,colCounts}=puz;
+    const grid=Array(N*N).fill(0); for(const c of cats) grid[c]=2;
+    // the generator's cats are a winning board, every rat paired with its own side-adjacent cat, counts match
+    if(!isSolved(puz,grid)) ok=false;
+    { const k=conflicts(puz,grid); if(k.hiss.size||k.lost.size||k.badRow.size||k.badCol.size) ok=false; }
+    if(pair.size!==cats.size||rat.reduce((a,b)=>a+b,0)!==cats.size) ok=false;
+    for(const [b,c] of pair) if(!rat[b]||!cats.has(c)||!a4[b].includes(c)) ok=false;
+    for(let i=0;i<N;i++){ let r=0, k=0; for(const c of cats){ if(((c/N)|0)===i) r++; if(c%N===i) k++; }
+      if(r!==rowCounts[i]||k!==colCounts[i]) ok=false; }
+    // re-solve from the bare board: fully deducible, and the deduced cats are the generator's
+    const sol=solve(puz);
+    for(let x=0;x<N*N;x++) if((sol.st[x]===1)!==cats.has(x)) ok=false;
+    console.log("  "+N+"×"+N+" ("+cats.size+" cats): "+(sol.complete?"logically solvable ✅ ("+sol.steps+" contradiction steps)":"not deducible ❌"));
+    if(!sol.complete) ok=false;
+    console.assert(ok,"Kattenratten self-test failed for "+N);
+  }
+  console.log(ok?"Kattenratten self-test passed ✅":"Kattenratten self-test FAILED ❌");
+  return ok;
+}
+if(location.hostname==="localhost"||location.hash==="#selftest") runSelfTest();
+</script>
+</body>
+</html>

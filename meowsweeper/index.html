@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Meowsweeper — a &quot;Minesweeper&quot;-style cat logic puzzle</title>
-<meta name="description" content="Meowsweeper is a free daily logic puzzle: clear every safe tile without waking the spooky things that scare the cats. Every board is deterministic and solvable by pure deduction. No ads, no telemetry.">
+<meta name="description" content="Meowsweeper is a free daily logic puzzle: clear every safe tile without waking the spooky things that scare the cats. No ads, no telemetry.">
 <link rel="canonical" href="https://kattenspellen.github.io/games/meowsweeper/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Meowsweeper — a &quot;Minesweeper&quot;-style cat logic puzzle">
@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://kattenspellen.github.io/games/assets/meowsweeper-preview.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://kattenspellen.github.io/games/assets/meowsweeper-preview.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🙀</text></svg>">
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="../icon-180.png">
 <meta name="theme-color" content="#b39ddb">
 <link rel="manifest" href="manifest.webmanifest">
@@ -73,8 +73,9 @@
     grid-template-columns: repeat(var(--n), auto);
     gap: 3px; background: #e5ddf3; padding: 10px; border-radius: 14px;
     box-shadow: var(--shadow);
-    touch-action: manipulation;
-    --cell: clamp(26px, calc((94vw - 40px)/var(--n)), 60px);
+    touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; /* no text selection or copy menu on long-press (iOS needs the prefixes) */
+    /* --cell fits the board to the screen: 100vw less 40px (body padding + scrollbar room), board padding, gaps and clue column */
+    --cell: min(calc((100vw - 57px - 3px * var(--n)) / var(--n)), 60px);
   }
   /* loading: generation blocks the page, so a spinning emoji is painted first; it fades in late
      (transform/opacity animate off the main thread) so fast boards never flash it */
@@ -89,7 +90,7 @@
     width: var(--cell); height: var(--cell);
     border-radius: 9px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: calc(var(--cell) * .52); font-weight: 900; line-height: 1; user-select: none;
+    font-size: calc(var(--cell) * .52); font-weight: 900; line-height: 1;
     transition: transform .1s ease, background .15s, box-shadow .15s;
     position: relative;
   }
@@ -167,7 +168,7 @@
 
   <div class="controls">
     <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
-      <input id="sizeInput" type="number" min="5" max="10" value="8"
+      <input id="sizeInput" type="number" min="5" max="10" value="7"
         style="width:3em;border:none;background:#efeafa;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
     </label>
     <button class="btn primary" id="newBtn">🎲 New</button>
@@ -181,10 +182,9 @@
   <div class="overlay" id="rulesOverlay">
     <div class="card">
       <h2>How to play</h2>
-      <p>Spooky things are hiding among the tiles 👻🤡👽 — clear every safe tile without digging one up to keep your cat safe!</p>
+      <p>Clear every safe tile without digging up a spooky thing 👻🤡👽.</p>
       <p>Each opened tile shows how many spooky things touch it (its 8 neighbours). A <b>blank</b> tile has none, so its neighbours auto-clear.</p>
-      <p>Use those numbers to deduce where the spooky things are — every board is solvable by <b>pure logic</b>. Switch to 🚩 mode (or right-click) to flag them.</p>
-      <p>Clear all safe tiles to win. Dig up a spooky thing and the cats bolt — 🙀 — but you can try the same board again.</p>
+      <p>Switch to 🚩 mode (or right-click) to flag a tile.</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
@@ -312,7 +312,7 @@ function generatePuzzle(N,rng){
 }
 
 /* ---------- config ---------- */
-const DEFAULT_N=8, MIN_N=5, MAX_N=10; // board size is the difficulty; density fixed
+const DEFAULT_N=7, MIN_N=5, MAX_N=10; // board size is the difficulty; density fixed
 const SPOOKY=["🤡","👻","👽","🧟","🐍","🦠","⛈️","☄️","🎃","🧨","🛸","💉","💥","☢️"]; // the "mines" — things that scare cats
 const NUMCOL=["","#5b8dee","#3aa657","#e5484d","#8b5cf6","#b45309","#0f8a8a","#5b4a52","#8a8a8a"];
 const WINCATS=["😻","😸","😺","🐱","😹"];
@@ -538,6 +538,8 @@ function setFlagMode(on){ state.flagMode=on;
   b.classList.toggle("on",on); b.textContent=on?"🚩 Flag":"🔨 Dig"; }
 // click the backdrop (outside the card) to dismiss any overlay
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
+// a quick double tap can make mobile browsers fire a stray extra click ~25ms later; drop it so a tap never counts twice
+let lastClick=-1e9; document.addEventListener("click",e=>{ if(e.timeStamp-lastClick<50){ e.stopPropagation(); e.preventDefault(); } lastClick=e.timeStamp; },true);
 document.getElementById("dateTag").textContent="Fresh spooky boards, any size "+MIN_N+"–"+MAX_N;
 document.getElementById("newBtn").onclick=newGame;
 document.getElementById("flagBtn").onclick=()=>setFlagMode(!state.flagMode);

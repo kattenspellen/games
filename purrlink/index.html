@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Purrlink — a &quot;Numberlink&quot;-style cat logic puzzle</title>
-<meta name="description" content="Purrlink is a free daily logic puzzle: connect each cat to its ball of yarn so no strands cross and every square is filled. Deterministic and solvable by pure deduction. No ads, no telemetry.">
+<meta name="description" content="Purrlink is a free daily logic puzzle: connect each cat to its ball of yarn so no strands cross and every square is filled. No ads, no telemetry.">
 <link rel="canonical" href="https://kattenspellen.github.io/games/purrlink/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Purrlink — a &quot;Numberlink&quot;-style cat logic puzzle">
@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://kattenspellen.github.io/games/assets/purrlink-preview.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://kattenspellen.github.io/games/assets/purrlink-preview.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧶</text></svg>">
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="../icon-180.png">
 <meta name="theme-color" content="#f4a582">
 <link rel="manifest" href="manifest.webmanifest">
@@ -73,8 +73,10 @@
     grid-template-columns: repeat(var(--n), var(--cell));
     gap: 3px; background: #f8d3e1; padding: 10px; border-radius: 14px;
     box-shadow: var(--shadow);
-    touch-action: none; user-select: none; /* drag draws strands — no scroll/zoom on the board */
-    --cell: clamp(28px, calc((94vw - 40px)/var(--n)), 64px);
+    touch-action: none; /* drag draws strands — no scroll/zoom on the board */
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; /* no text selection or copy menu on long-press (iOS needs the prefixes) */
+    /* --cell fits the board to the screen: 100vw less 40px (body padding + scrollbar room), board padding, gaps and clue column */
+    --cell: min(calc((100vw - 57px - 3px * var(--n)) / var(--n)), 64px);
   }
   /* loading: generation blocks the page, so a spinning emoji is painted first; it fades in late
      (transform/opacity animate off the main thread) so fast boards never flash it */
@@ -165,7 +167,7 @@
 
   <div class="controls">
     <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
-      <input id="sizeInput" type="number" min="5" max="10" value="6"
+      <input id="sizeInput" type="number" min="5" max="10" value="7"
         style="width:3em;border:none;background:#fce4ee;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
     </label>
     <button class="btn primary" id="newBtn">🎲 New</button>
@@ -182,7 +184,6 @@
       <p>Every <b>cat 🐱</b> has a matching <b>ball of yarn 🧶</b> — same colour and number.</p>
       <p>Drag a strand from each cat to its yarn (or yarn to cat). Strands can't <b>cross</b> or <b>branch</b>, and every square must be covered.</p>
       <p>Drag back to shorten a strand; tap a cat or yarn to clear its strand. Drawing through another strand cuts it.</p>
-      <p>There's always exactly one answer, and you can reach it by logic alone.</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
@@ -351,7 +352,7 @@ function generatePuzzle(N,rng){
 }
 
 /* ---------- config ---------- */
-const DEFAULT_N=6, MIN_N=5, MAX_N=10; // 10×10 needs ~15 pairs — hence 16 colours
+const DEFAULT_N=7, MIN_N=5, MAX_N=10; // 10×10 needs ~15 pairs — hence 16 colours
 // strand colours: all pairs ΔE76 ≥ 22 (endpoint number badges back them up)
 const COLORS=["#e5484d","#f28c28","#f2c230","#9ccc3a","#3fae5a","#22a39f","#3fa7e0","#3f63d6","#8a5fbf","#d152b8","#f27aa8","#9a6a44","#506400","#b0bc84","#ccace4","#80486c"];
 // pair cap: ≤9×9 stays at 12 (fewer pairs = harder); only 10×10 needs the full palette
@@ -573,6 +574,8 @@ function updateChallengeUI(){ const clk=document.getElementById("clock");
 
 // click the backdrop (outside the card) to dismiss any overlay
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
+// a quick double tap can make mobile browsers fire a stray extra click ~25ms later; drop it so a tap never counts twice
+let lastClick=-1e9; document.addEventListener("click",e=>{ if(e.timeStamp-lastClick<50){ e.stopPropagation(); e.preventDefault(); } lastClick=e.timeStamp; },true);
 document.getElementById("dateTag").textContent="Connect each cat to its ball of yarn, any size "+MIN_N+"–"+MAX_N;
 boardEl.addEventListener("pointerdown",onDown);
 boardEl.addEventListener("pointermove",onMove);

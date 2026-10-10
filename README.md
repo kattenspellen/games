@@ -34,5 +34,11 @@ A "Numberlink"-style logic puzzle. Connect each cat to its ball of yarn — no c
 
 <img src="assets/purrlink-demo.gif" alt="Purrlink demo" width="400">
 
+### 🐭 [Kattenratten](https://kattenspellen.github.io/games/kattenratten/)
+
+A "Tents"-style logic puzzle. Every rat gets its own cat — cats never touch, and each row and column has its count.
+
+<img src="assets/kattenratten-demo.gif" alt="Kattenratten demo" width="400">
+
 </div>
 

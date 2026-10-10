@@ -17,7 +17,7 @@ The `<script>` runs top-to-bottom in commented sections: deterministic RNG → p
 - **Deductive solver** (`solve`): simulate a player who only makes proven moves. Reveal the blank start, flood its zero-region, then propagate to a fixpoint with two rule families: **count** (a clue whose remaining mines equal its unknown neighbours flags them all; one whose remaining is 0 clears them all) and **subset / the 1-2 rule** (if clue A's unknowns are a strict subset of clue B's, the difference set is forced all-mine or all-safe). No backtracking. `complete` ⇒ every safe cell was deduced.
 - **The player digs and flags** the same board the solver reasoned about. `dig` floods zero-regions exactly like the solver; a flag is a pure marker. Digging a mine loses (a player who only makes proven moves never has to).
 - **Opening region pre-revealed on load.** `setupGame` calls `floodOpen(start)` before rendering, so the board loads showing the same opening region + numbers the solver starts from — no first-dig death, and the served board matches the deductive proof from tile one. Generation also rejects boards whose opening flood already reveals every safe cell (they'd need no real dig).
-- **Board size is the difficulty**: 5–10, default 8 (`DEFAULT_N`). Density is fixed, so a bigger grid means more tiles and more mines to reason about.
+- **Board size is the difficulty**: 5–10, default 7 (`DEFAULT_N`). Density is fixed, so a bigger grid means more tiles and more mines to reason about.
 
 ## Rules
 
