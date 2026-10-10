@@ -108,6 +108,17 @@
     position: relative;
   }
   .cell:active { transform: scale(.92); }
+  #board .cell { touch-action: none; } /* a hold-and-drag on a tile works the picker instead of panning the page */
+  /* press-and-hold picker: a ring of all 8 tile states around the finger; drag to one and release */
+  .picker { position: fixed; width: 0; height: 0; z-index: 40; pointer-events: none; }
+  /* a see-through board-green glow behind the ring, fading out past the tiles: sets the options apart while the board stays visible */
+  .picker:not(:empty)::before { content: ""; position: absolute; width: calc(var(--r) * 2); height: calc(var(--r) * 2);
+    margin: calc(var(--r) * -1); background: radial-gradient(closest-side, rgba(220,236,221,.6) 55%, rgba(220,236,221,0));
+    animation: pickin .2s cubic-bezier(.3,1.6,.5,1); }
+  .picker .cell { position: absolute; margin: calc(var(--cell) * -.5); box-shadow: var(--shadow);
+    animation: pickin .2s cubic-bezier(.3,1.6,.5,1) backwards; }
+  .picker .cell.on { transform: scale(1.18); box-shadow: 0 0 0 3px var(--accent-2) inset, var(--shadow); }
+  @keyframes pickin { from { transform: scale(.3); opacity: 0; } }
   .cell.track { background: #cbe9e8; } /* light tint of the teal --accent-2 */
   .cell.empty { background: #eef3ec; }
   .cell.locked { box-shadow: 0 0 0 2px var(--accent-2) inset; cursor: default; }
@@ -202,7 +213,7 @@
       <p>Lay one trail of <b>cat paws 🐾</b> from the <b>entry</b> nub to the <b>exit</b> nub.</p>
       <p>The trail never branches, crosses or loops.</p>
       <p>The <b>numbers</b> say how many paws are in each row and column.</p>
-      <p>Tap a cell to cycle: <b>✕</b>, then the six track pieces (straights and elbows), then clear. Tap a number to <b>✕</b> the rest of its line.</p>
+      <p>Tap a cell to cycle: <b>✕</b>, then the six track pieces (straights and elbows), then clear. Or press and hold, drag to a piece and let go. Tap a number to <b>✕</b> the rest of its line.</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
@@ -443,7 +454,7 @@ function renderBoard(){
     for(let c=0;c<N;c++){
       const cell=document.createElement("div");
       cell.className="cell"; cell.dataset.r=r; cell.dataset.c=c;
-      cell.onclick=()=>onCell(r,c);
+      cell.onclick=(e)=>{ if(e.timeStamp-pickT>400) onCell(r,c); }; // skip the click a picker release can trail
       boardEl.appendChild(cell);
     }
   }
@@ -481,14 +492,50 @@ function updateCount(){
 }
 
 /* ---------- interaction ---------- */
-function onCell(r,c){
-  if(state.won||state.locked[r][c]) return;
+function onCell(r,c){ setCell(r,c,(state.grid[r][c]+1)%8); } // cycle: unknown → ✕ → the 6 paw-track pieces → unknown
+function setCell(r,c,v){
+  if(state.won||state.locked[r][c]||state.grid[r][c]===v) return;
   if(!state.started) startTimer();
   pushUndo();
-  const v=state.grid[r][c];
-  state.grid[r][c] = (v+1)%8; // cycle: unknown → ✕ → the 6 paw-track pieces → unknown
+  state.grid[r][c]=v;
   paint(); updateCount(); updateUndo(); checkWin();
 }
+
+// press and hold a tile to open a ring of all 8 states; drag toward one and release to set it
+// (release in the middle cancels). Ring slots clockwise from north; each elbow sits at the corner it bends toward.
+const RING=[2,4,3,5,1,6,0,7]; // │, └, ─, ┌, ✕, ┐, clear, ┘
+let hold=null, pickT=-1e9, pickerEl=null;
+function openPicker(){
+  // sized off the default board's tile (the #board --cell formula at DEFAULT_N), so the drag is the same distance at every size
+  const {x,y}=hold, w=Math.min((innerWidth-60-3*DEFAULT_N)/(DEFAULT_N+.72),62), t=w*.8, R=w*1.35, D=R+t*1.2, ext=R+t*.75+4; // option tiles t, ring radius R, backdrop glow radius D (its fade may run off-screen; the tiles don't)
+  const cx=Math.max(ext,Math.min(innerWidth-ext,x)), cy=Math.max(ext,Math.min(innerHeight-ext,y));
+  if(!pickerEl){ pickerEl=document.createElement("div"); pickerEl.className="picker"; document.body.appendChild(pickerEl); }
+  pickerEl.style.cssText="left:"+cx+"px;top:"+cy+"px;--cell:"+t+"px;--r:"+D+"px";
+  pickerEl.innerHTML=RING.map((v,k)=>'<div class="cell'+(v>=2?" track":v===1?" empty":"")+'" style="left:'+R*Math.sin(k*Math.PI/4)+'px;top:'+-R*Math.cos(k*Math.PI/4)+'px">'+(v>=2?pieceHTML(v,-1):v===1?'<span class="x">✕</span>':"")+'</div>').join("");
+  hold.open=true; hold.sel=-1; hold.w=w; hold.cx=cx; hold.cy=cy; // pick relative to the ring as drawn (it may shift in from the edge)
+  if(navigator.vibrate) navigator.vibrate(10);
+}
+function endHold(){ if(!hold) return; clearTimeout(hold.t); if(pickerEl) pickerEl.innerHTML=""; hold=null; }
+boardEl.addEventListener("pointerdown",e=>{
+  const cell=e.target.closest&&e.target.closest(".cell"); endHold();
+  if(!cell||e.button>0||state.won||state.locked[+cell.dataset.r][+cell.dataset.c]) return;
+  hold={cell,id:e.pointerId,x:e.clientX,y:e.clientY,t:setTimeout(openPicker,350)};
+});
+// move/up on the document: the ring spills past the board, so the finger can leave it
+document.addEventListener("pointermove",e=>{
+  if(!hold||e.pointerId!==hold.id) return;
+  if(!hold.open){ if(Math.hypot(e.clientX-hold.x,e.clientY-hold.y)>10) endHold(); return; } // moved before the hold fired: not a hold
+  const dx=e.clientX-hold.cx, dy=e.clientY-hold.cy;
+  hold.sel = Math.hypot(dx,dy)<hold.w*.45 ? -1 : (Math.round(Math.atan2(dx,-dy)/(Math.PI/4))+8)%8;
+  pickerEl.querySelectorAll(".cell").forEach((o,k)=>o.classList.toggle("on",k===hold.sel));
+});
+document.addEventListener("pointerup",e=>{
+  if(!hold||e.pointerId!==hold.id) return;
+  if(hold.open){ pickT=e.timeStamp; if(hold.sel>=0) setCell(+hold.cell.dataset.r,+hold.cell.dataset.c,RING[hold.sel]); }
+  endHold();
+});
+document.addEventListener("pointercancel",endHold);
+boardEl.addEventListener("contextmenu",e=>e.preventDefault()); // Android long-press would otherwise raise a context menu
 
 // undo stack: one snapshot per user action (a whole-line fill is one action). Keep the last 10.
 function pushUndo(){ state.undo.push(state.grid.map(row=>row.slice())); if(state.undo.length>10) state.undo.shift(); }
