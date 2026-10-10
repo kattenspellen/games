@@ -29,6 +29,7 @@
   }
   /* Google's Noto emoji, subset to the ones we use, so cats look the same on every device */
   @font-face { font-family: "Noto Color Emoji"; src: url("../assets/noto-emoji.woff2") format("woff2"); }
+  html.no-noto, html.no-noto body { font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif; } /* set by the emoji check */
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
@@ -232,6 +233,16 @@
 
 <script>
 "use strict";
+
+/* ---------- emoji font check ---------- */
+// Some phones load the Noto font yet draw its emoji blank; drop it there so the device's own emoji show.
+if (typeof document !== "undefined" && document.fonts) document.fonts.load('40px "Noto Color Emoji"', "🐱").then(() => {
+  const c = document.createElement("canvas"); c.width = c.height = 48;
+  const x = c.getContext("2d"); x.font = '40px "Noto Color Emoji"'; x.textBaseline = "top"; x.fillText("🐱", 4, 4);
+  const d = x.getImageData(0, 0, 48, 48).data; let n = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] > 128) n++;
+  if (n < 50) document.documentElement.classList.add("no-noto");
+}).catch(() => {});
 
 /* ---------- deterministic daily RNG ---------- */
 function xmur3(str){ let h=1779033703^str.length;
