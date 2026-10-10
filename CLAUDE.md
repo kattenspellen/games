@@ -75,7 +75,7 @@ The look is shared so the games read as one family; a per-game palette makes eac
 - **Landing tile**: one `a.card` per game — emoji + `<h2>` name + one-line description.
 - **Mood**: soft, playful, pastel. Cats and emoji, never harsh.
 - **Accessibility floor**: any glyph drawn on a colored region clears 3:1 contrast against every region color; region palettes keep all pairs distinct (ΔE ≥ 18) even when touching.
-- **Responsive, mobile-first**: viewport-scaled sizing (`clamp`), touch-friendly (`touch-action`, no tap-highlight), works on small screens.
+- **Responsive, mobile-first**: viewport-scaled sizing, touch-friendly (`touch-action`, no tap-highlight, and `#board` sets `-webkit-user-select`/`-webkit-touch-callout: none` so a long-press never selects text on iOS), works on small screens. `--cell` budgets the whole board (body padding, board padding, gaps, clue column) against `100vw`, so even the largest size fits a 320px screen. A capture-phase `click` guard drops a stray second click within 50ms (some mobile browsers send one after a quick double tap), so a tap never counts twice; it's identical in every game.
 - **Naming**: each game's name is a cat pun.
 - **Rules card**: just the motions — the goal, the constraints, the controls, one short line each. No role-play or flavor text.
 
