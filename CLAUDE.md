@@ -54,7 +54,7 @@ A game's rules are usually encoded in several functions (generator, solver, vali
 
 ## Discoverability
 
-Every page carries the full head set: `<title>`, `<meta name="description">`, canonical URL, Open Graph tags (type/title/description/url/image), Twitter Card tags (`twitter:card` + `twitter:image` — `summary_large_image` for games, `summary` for the landing; title/description fall back to OG so links unfurl with an image in messaging apps and on X), `theme-color`, the inline-SVG emoji favicon, `apple-touch-icon`, and a per-game `manifest.webmanifest`. Add each game to the repo `sitemap.xml`.
+Every page carries the full head set: `<title>`, `<meta name="description">`, canonical URL, Open Graph tags (type/title/description/url/image), Twitter Card tags (`twitter:card` + `twitter:image` — `summary_large_image` for games, `summary` for the landing; title/description fall back to OG so links unfurl with an image in messaging apps and on X), `theme-color`, a `favicon.png` of the page's emoji, `apple-touch-icon`, and a per-game `manifest.webmanifest`. Add each game to the repo `sitemap.xml`.
 
 Each game also ships two shared social/README assets under `assets/`: a `<game>-preview.png` (700×700, the og/twitter image — a clean single frame of the game) and a `<game>-demo.gif` (linked in `README.md` at `width="400"`).
 
@@ -65,7 +65,7 @@ The look is shared so the games read as one family; a per-game palette makes eac
 **Family constants — never vary:**
 
 - **Font**: `"Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif`.
-- **Emoji**: Google's Noto, identical on every device — `assets/noto-emoji.woff2` is Noto Color Emoji subset to the emoji the pages use (COLRv1 for Chrome/Firefox + OT-SVG for Safari in one file), first in the font stack. Added an emoji? Rerun `uv run assets/build-emoji-font.py`, or it renders as the device's native emoji.
+- **Emoji**: Google's Noto, identical on every device — `assets/noto-emoji.woff2` is Noto Color Emoji subset to the emoji the pages use (COLRv1 for Chrome/Firefox + OT-SVG for Safari in one file), first in the font stack. Added an emoji? Rerun `uv run scripts/build-emoji-font.py`, or it renders as the device's native emoji. The favicons and `icon-*.png` home-screen icons are Noto too, drawn by `uv run scripts/build-icons.py` (needs Chrome; a new game or changed emoji goes in its `FAVICONS`).
 - **Background**: a soft `linear-gradient(160deg, …)` from cream `#fdf6f0` to a pale tint of the game's accent. The cream start and the softness are fixed; the second stop is per-game (see below).
 - **Neutrals**: `--ink:#5b4a52` (soft mauve text, not black), `--panel:#ffffff` (cards), `--shadow:0 6px 20px rgba(120,90,110,.15)`.
 - **Shape**: generous rounding (cards ~20px, buttons/cells ~8–12px) and soft shadows.

@@ -4,7 +4,7 @@
 # ///
 """Rebuild assets/noto-emoji.woff2: Google's Noto Color Emoji, subset to the emoji the pages use.
 
-Run after adding an emoji anywhere:  uv run assets/build-emoji-font.py
+Run after adding an emoji anywhere:  uv run scripts/build-emoji-font.py
 
 One font, two colour tables: COLRv1 (Chrome, Firefox) + OT-SVG (Safari, which lacks COLRv1).
 Both come from Google Fonts, which serves each browser whichever format it supports.
