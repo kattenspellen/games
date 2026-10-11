@@ -160,6 +160,7 @@
   }
   .card h2 { margin: 6px 0 10px; }
   .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  #demoImg { display: block; width: 100%; height: auto; border-radius: 12px; margin-bottom: 12px; }
   .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
     animation: fall linear forwards; }
   @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
@@ -192,7 +193,17 @@
       <p>The puzzle is solved when one cat 🐱 is placed in every row, column and color region, and no cats are touching, not even diagonally.</p>
       <p>Tap a tile once for an ✕, twice for a cat, and three times to clear the tile.</p>
       <p>Tap an ✕ button on the edge of the board to add an ✕ to each empty tile in that row or column.</p>
-      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      <div class="winbtns">
+        <button class="btn" id="demoBtn">Watch demo</button>
+        <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="demoOverlay">
+    <div class="card">
+      <img id="demoImg" data-src="../assets/catoku-demo.gif" alt="Catoku demo" width="700" height="700">
+      <button class="btn primary" onclick="document.getElementById('demoOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
 
@@ -302,7 +313,9 @@ function genColoring(N, placement, rng){
 // returns {placed, placement}; placed===N means fully deducible (unique, no
 // trial-and-error). `placed` (how far pure deduction gets) also scores colorings
 // during carving. A contradiction (a unit with no candidates) stops deduction.
-function logicalSolve(N, color){
+// log(kind, [r,c], why), if given, records each committed deduction in order: "cat" with the
+// single that fired ({row}/{col}/{reg}), "x" with its cause ({cat:[r,c]} or a locked {reg}/{row}/{col}).
+function logicalSolve(N, color, log){
   const cand=Array.from({length:N},()=>Array(N).fill(true));
   const cat=Array.from({length:N},()=>Array(N).fill(false));
   const rowDone=Array(N).fill(false), colDone=Array(N).fill(false), regDone=Array(N).fill(false);
@@ -310,29 +323,31 @@ function logicalSolve(N, color){
   const rowCells=r=>{ const a=[]; for(let c=0;c<N;c++) if(cand[r][c]) a.push([r,c]); return a; };
   const colCells=c=>{ const a=[]; for(let r=0;r<N;r++) if(cand[r][c]) a.push([r,c]); return a; };
   const regCells=g=>{ const a=[]; for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(color[r][c]===g&&cand[r][c]) a.push([r,c]); return a; };
-  function elim(r,c){ if(cand[r][c]){ cand[r][c]=false; progress=true; } }
-  function place(r,c){
-    cat[r][c]=true; placed++; const g=color[r][c];
-    rowDone[r]=colDone[c]=regDone[g]=true; progress=true;
-    for(let i=0;i<N;i++){ cand[r][i]=false; cand[i][c]=false; }
-    for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g) cand[rr][cc]=false;
-    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ const nr=r+dr,nc=c+dc; if(nr>=0&&nc>=0&&nr<N&&nc<N) cand[nr][nc]=false; }
+  function elim(r,c,why){ if(cand[r][c]){ cand[r][c]=false; progress=true; if(log) log("x",[r,c],why); } }
+  function place(r,c,why){
+    cat[r][c]=true; placed++; const g=color[r][c], by={cat:[r,c]};
+    rowDone[r]=colDone[c]=regDone[g]=true; progress=true; cand[r][c]=false;
+    if(log) log("cat",[r,c],why);
+    for(let i=0;i<N;i++) elim(r,i,by);
+    for(let i=0;i<N;i++) elim(i,c,by);
+    for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g) elim(rr,cc,by);
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ const nr=r+dr,nc=c+dc; if(nr>=0&&nc>=0&&nr<N&&nc<N) elim(nr,nc,by); }
   }
   while(progress && placed<N && !dead){
     progress=false;
     // forced single: a row/col/region with exactly one remaining candidate must hold the cat
-    for(let r=0;r<N;r++) if(!rowDone[r]){ const cells=rowCells(r); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1]); }
-    for(let c=0;c<N&&!dead;c++) if(!colDone[c]){ const cells=colCells(c); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1]); }
-    for(let g=0;g<N&&!dead;g++) if(!regDone[g]){ const cells=regCells(g); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1]); }
+    for(let r=0;r<N;r++) if(!rowDone[r]){ const cells=rowCells(r); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1],{row:r}); }
+    for(let c=0;c<N&&!dead;c++) if(!colDone[c]){ const cells=colCells(c); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1],{col:c}); }
+    for(let g=0;g<N&&!dead;g++) if(!regDone[g]){ const cells=regCells(g); if(!cells.length){dead=true;break;} if(cells.length===1) place(cells[0][0],cells[0][1],{reg:g}); }
     if(dead) break;
     // locked candidates: a region confined to one row/col claims it (and vice-versa)
     for(let g=0;g<N;g++) if(!regDone[g]){ const cells=regCells(g);
-      if(cells.length && cells.every(x=>x[0]===cells[0][0])){ const r=cells[0][0]; for(let c=0;c<N;c++) if(color[r][c]!==g) elim(r,c); }
-      if(cells.length && cells.every(x=>x[1]===cells[0][1])){ const c=cells[0][1]; for(let r=0;r<N;r++) if(color[r][c]!==g) elim(r,c); } }
+      if(cells.length && cells.every(x=>x[0]===cells[0][0])){ const r=cells[0][0]; for(let c=0;c<N;c++) if(color[r][c]!==g) elim(r,c,{reg:g}); }
+      if(cells.length && cells.every(x=>x[1]===cells[0][1])){ const c=cells[0][1]; for(let r=0;r<N;r++) if(color[r][c]!==g) elim(r,c,{reg:g}); } }
     for(let r=0;r<N;r++) if(!rowDone[r]){ const cells=rowCells(r);
-      if(cells.length && cells.every(x=>color[x[0]][x[1]]===color[cells[0][0]][cells[0][1]])){ const g=color[cells[0][0]][cells[0][1]]; for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g&&rr!==r) elim(rr,cc); } }
+      if(cells.length && cells.every(x=>color[x[0]][x[1]]===color[cells[0][0]][cells[0][1]])){ const g=color[cells[0][0]][cells[0][1]]; for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g&&rr!==r) elim(rr,cc,{row:r}); } }
     for(let c=0;c<N;c++) if(!colDone[c]){ const cells=colCells(c);
-      if(cells.length && cells.every(x=>color[x[0]][x[1]]===color[cells[0][0]][cells[0][1]])){ const g=color[cells[0][0]][cells[0][1]]; for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g&&cc!==c) elim(rr,cc); } }
+      if(cells.length && cells.every(x=>color[x[0]][x[1]]===color[cells[0][0]][cells[0][1]])){ const g=color[cells[0][0]][cells[0][1]]; for(let rr=0;rr<N;rr++) for(let cc=0;cc<N;cc++) if(color[rr][cc]===g&&cc!==c) elim(rr,cc,{col:c}); } }
   }
   const out=Array(N); for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(cat[r][c]) out[r]=c;
   return { placed, placement:out };
@@ -658,6 +673,9 @@ document.getElementById("undoBtn").onclick=undo;
 document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+// Watch demo swaps the rules card for the demo GIF, fetched on first open.
+document.getElementById("demoBtn").onclick=()=>{ const i=document.getElementById("demoImg"); if(!i.src) i.src=i.dataset.src;
+  document.getElementById("rulesOverlay").classList.remove("show"); document.getElementById("demoOverlay").classList.add("show"); };
 document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
 document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
 const incoming=parseChallenge();

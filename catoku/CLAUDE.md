@@ -10,7 +10,7 @@ The `<script>` runs top-to-bottom in commented sections: deterministic RNG → p
 
 - **Deterministic puzzles.** Seed with `makeRng` (`xmur3` + `mulberry32`). The daily board uses seed `"YYYY-MM-DD|7"`; "New game" uses a fresh `"rnd|N|counter|Date.now()"` seed. Puzzles are memoized in `puzzleCache` and rebuilt on every page load.
 - **Generation** (`generatePuzzle`): pick a solution (`genPlacement`), then `carveColoring` reshapes color regions, hill-climbing on how far the deductive solver gets, until the board is fully deducible.
-- **Deductive solver** (`logicalSolve`): human-style inference only (forced singles per row/col/region + locked-candidate confinement), no backtracking. Returns `{placed, placement}`; `placed===N` means fully deducible.
+- **Deductive solver** (`logicalSolve`): human-style inference only (forced singles per row/col/region + locked-candidate confinement), no backtracking. Returns `{placed, placement}`; `placed===N` means fully deducible. An optional `log(kind, at, why)` records each committed deduction in order — `scripts/build-demos.py` replays it; keep it at every place a deduction is committed.
 - **Board size is the difficulty**: 5–12, default 7 (`DEFAULT_N`). `MAX_N=12`; larger boards fall back and take seconds.
 
 ## Rules

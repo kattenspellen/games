@@ -154,6 +154,7 @@
   }
   .card h2 { margin: 6px 0 10px; }
   .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  #demoImg { display: block; width: 100%; height: auto; border-radius: 12px; margin-bottom: 12px; }
   .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
     animation: fall linear forwards; }
   @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
@@ -187,7 +188,17 @@
       <p>The numbers on the edge of the board indicate how many cats are in the corresponding column or row.</p>
       <p>Tap a tile once for an ✕, twice for a cat, and three times to clear the tile.</p>
       <p>Tap a number button on the edge of the board to add an ✕ to each empty tile in that row or column.</p>
-      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      <div class="winbtns">
+        <button class="btn" id="demoBtn">Watch demo</button>
+        <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="demoOverlay">
+    <div class="card">
+      <img id="demoImg" data-src="../assets/kattenratten-demo.gif" alt="Kattenratten demo" width="700" height="700">
+      <button class="btn primary" onclick="document.getElementById('demoOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
 
@@ -267,14 +278,16 @@ function adj8(N,cell){ const r=(cell/N)|0, c=cell%N, out=[];
 // one rat beside it that no other cat holds claims it (none = dead); a rat whose only candidate is a cat
 // with no rat yet is that cat's; a rat with no candidate is dead, one with a single unknown candidate makes
 // it a cat; an unknown whose rats are all held (or that has none) can't be a cat.
-function propagate(puz,st){
-  const {N,rat,a4,a8,lines}=puz, NN=N*N;
+// log(kind, cell, why), if given, records each committed deduction: "cat"/"x" with {cat:x} (no touch),
+// {line:li} (counts; lines[li] is row li>>1 or, if li&1, that column), {rat:b} or {near:x} (pairing).
+function propagate(puz,st,log){
+  const {N,rat,a4,a8,lines}=puz, NN=N*N, put=(x,v,why)=>{ st[x]=v; if(log) log(v===1?"cat":"x",x,why); };
   for(let ch=true; ch;){ ch=false;
-    for(let x=0;x<NN;x++) if(st[x]===1) for(const y of a8[x]){ if(st[y]===1) return false; if(st[y]===0){ st[y]=2; ch=true; } }
-    for(const {cells,n} of lines){ let cats=0; const unk=[];
+    for(let x=0;x<NN;x++) if(st[x]===1) for(const y of a8[x]){ if(st[y]===1) return false; if(st[y]===0){ put(y,2,{cat:x}); ch=true; } }
+    for(let li=0;li<lines.length;li++){ const {cells,n}=lines[li]; let cats=0; const unk=[];
       for(const x of cells){ if(st[x]===1) cats++; else if(st[x]===0) unk.push(x); }
       if(cats>n||cats+unk.length<n) return false;
-      if(unk.length&&(cats===n||cats+unk.length===n)){ for(const x of unk) st[x]=cats===n?2:1; ch=true; } }
+      if(unk.length&&(cats===n||cats+unk.length===n)){ for(const x of unk) put(x,cats===n?2:1,{line:li}); ch=true; } }
     const owner=new Int32Array(NN).fill(-1), owns=new Int32Array(NN).fill(-1);
     const cand=b=>a4[b].filter(y=>st[y]===0||(st[y]===1&&owns[y]<0));
     for(let more=true; more;){ more=false;
@@ -286,21 +299,22 @@ function propagate(puz,st){
           if(!c.length) return false;
           if(c.length===1&&st[c[0]]===1){ owner[x]=c[0]; owns[c[0]]=x; more=true; } } } }
     for(let x=0;x<NN;x++){
-      if(rat[x]){ if(owner[x]<0){ const c=cand(x); if(c.length===1&&st[c[0]]===0){ st[c[0]]=1; ch=true; } } }
-      else if(st[x]===0&&a4[x].every(b=>!rat[b]||owner[b]>=0)){ st[x]=2; ch=true; } } }
+      if(rat[x]){ if(owner[x]<0){ const c=cand(x); if(c.length===1&&st[c[0]]===0){ put(c[0],1,{rat:x}); ch=true; } } }
+      else if(st[x]===0&&a4[x].every(b=>!rat[b]||owner[b]>=0)){ put(x,2,{near:x}); ch=true; } } }
   return true; }
 
 // human-style deductive solver from the bare board: the direct rules, plus one-level proof by
 // contradiction when they stall — assume a cell is (or isn't) a cat, propagate; if that breaks, the
 // opposite is proven. Never nests. complete ⇒ every cell forced ⇒ unique. steps = contradictions used.
-function solve(puz){
+// log: see propagate; a proven opposite logs with {contra:true}.
+function solve(puz,log){
   const {N,rat}=puz, st=new Int8Array(N*N); let steps=0;
   for(let x=0;x<N*N;x++) if(rat[x]) st[x]=2;
-  let ok=propagate(puz,st);
+  let ok=propagate(puz,st,log);
   probe: while(ok){
     for(let x=0;x<N*N;x++){ if(st[x]!==0) continue;
       for(const v of [1,2]){ const t=st.slice(); t[x]=v;
-        if(!propagate(puz,t)){ st[x]=3-v; steps++; ok=propagate(puz,st); continue probe; } } }
+        if(!propagate(puz,t)){ st[x]=3-v; if(log) log(v===2?"cat":"x",x,{contra:true}); steps++; ok=propagate(puz,st,log); continue probe; } } }
     break; }
   let complete=ok; for(let x=0;x<N*N&&complete;x++) if(st[x]===0) complete=false;
   return {complete, st, steps}; }
@@ -552,6 +566,9 @@ document.getElementById("undoBtn").onclick=undo;
 document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+// Watch demo swaps the rules card for the demo GIF, fetched on first open.
+document.getElementById("demoBtn").onclick=()=>{ const i=document.getElementById("demoImg"); if(!i.src) i.src=i.dataset.src;
+  document.getElementById("rulesOverlay").classList.remove("show"); document.getElementById("demoOverlay").classList.add("show"); };
 document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
 document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
 const incoming=parseChallenge();
