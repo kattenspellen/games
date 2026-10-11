@@ -67,6 +67,7 @@
     text-decoration: none; font-weight: 900; font-size: 1.2rem; box-shadow: var(--shadow); transition: transform .12s; }
   .back:hover { transform: translateY(-2px); }
   .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+  #sizes .btn { min-width: 4.6em; }
 
   #board {
     display: grid;
@@ -164,10 +165,6 @@
   <div id="board"></div>
 
   <div class="controls">
-    <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
-      <input id="sizeInput" type="number" min="5" max="10" value="7"
-        style="width:3em;border:none;background:#fce4ee;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
-    </label>
     <button class="btn primary" id="newBtn">🎲 New</button>
     <button class="btn" id="undoBtn">↶ Undo</button>
     <button class="btn" id="resetBtn">↺ Reset</button>
@@ -183,6 +180,13 @@
       <p>Drag from a cat to its ball of yarn, or from the ball of yarn to the cat. Drag back to shorten a connection.</p>
       <p>Tap a cat or ball of yarn to clear the connection. Drawing through another connection cuts that connection.</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="newOverlay">
+    <div class="card">
+      <h2>New board</h2>
+      <div class="winbtns" id="sizes"></div>
     </div>
   </div>
 
@@ -548,9 +552,11 @@ function renderStats(){
 }
 
 /* ---------- wire up ---------- */
-const sizeInput=document.getElementById("sizeInput");
-function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
-function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+function newGame(n){ clearChallenge(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+// 🎲 New opens a size picker; tapping a size starts that board. The current size is filled in.
+const sizesEl=document.getElementById("sizes"), newOverlay=document.getElementById("newOverlay");
+for(let n=MIN_N;n<=MAX_N;n++){ const b=document.createElement("button"); b.className="btn"; b.textContent=n+"×"+n; b.dataset.n=n;
+  b.onclick=()=>{ newOverlay.classList.remove("show"); newGame(n); }; sizesEl.appendChild(b); }
 
 /* ---------- challenge links ---------- */
 // Shareable board: the hash carries only N ~ seed (~ challenger-time, once solved). The receiver
@@ -588,7 +594,7 @@ boardEl.addEventListener("pointerdown",onDown);
 boardEl.addEventListener("pointermove",onMove);
 boardEl.addEventListener("pointerup",onUp);
 boardEl.addEventListener("pointercancel",onUp);
-document.getElementById("newBtn").onclick=newGame;
+document.getElementById("newBtn").onclick=()=>{ sizesEl.querySelectorAll(".btn").forEach(b=>b.classList.toggle("primary",+b.dataset.n===state.N)); newOverlay.classList.add("show"); };
 document.getElementById("undoBtn").onclick=undo;
 document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };

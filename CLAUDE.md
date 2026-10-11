@@ -27,7 +27,7 @@ Every game is built to the shared criteria below, so each is solid on its own an
 Every game offers the same two modes:
 
 - **Daily challenge** — one instance per day, shared by everyone (seeded on the date). Win state persists so a solved day reads as done.
-- **New game** — spin up unlimited fresh instances on demand, each with a **selectable difficulty**. What the difficulty knob is depends on the game (Catoku uses board size); a game defines its own and documents it in its `CLAUDE.md`.
+- **New game** — spin up unlimited fresh instances on demand, each with a **selectable difficulty**. What the difficulty knob is depends on the game (Catoku uses board size); a game defines its own and documents it in its `CLAUDE.md`. 🎲 New opens a size picker (`.overlay` card, one button per size, current one filled); tapping a size starts that board.
 
 ## Challenge links
 

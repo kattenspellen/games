@@ -67,6 +67,7 @@
     text-decoration: none; font-weight: 900; font-size: 1.2rem; box-shadow: var(--shadow); transition: transform .12s; }
   .back:hover { transform: translateY(-2px); }
   .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+  #sizes .btn { min-width: 4.6em; }
 
   #board {
     display: grid;
@@ -164,10 +165,6 @@
   <div id="board"></div>
 
   <div class="controls">
-    <label class="btn" style="display:flex;align-items:center;gap:6px;cursor:default">Size
-      <input id="sizeInput" type="number" min="5" max="10" value="7"
-        style="width:3em;border:none;background:#efeafa;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
-    </label>
     <button class="btn primary" id="newBtn">🎲 New</button>
     <button class="btn" id="resetBtn">↺ Reset</button>
     <button class="btn" id="rulesBtn">Rules</button>
@@ -183,6 +180,13 @@
       <p>Lay flags to mark and keep track of the spooky things.</p>
       <p>Tap a tile to dig or press and hold to lay a flag.</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="newOverlay">
+    <div class="card">
+      <h2>New board</h2>
+      <div class="winbtns" id="sizes"></div>
     </div>
   </div>
 
@@ -535,14 +539,16 @@ function updateChallengeUI(){ const clk=document.getElementById("clock");
   clk.classList.toggle("behind", !!state.challenge && state.elapsed>state.challenge.time); }
 
 /* ---------- wire up ---------- */
-const sizeInput=document.getElementById("sizeInput");
-function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
-function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+function newGame(n){ clearChallenge(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
+// 🎲 New opens a size picker; tapping a size starts that board. The current size is filled in.
+const sizesEl=document.getElementById("sizes"), newOverlay=document.getElementById("newOverlay");
+for(let n=MIN_N;n<=MAX_N;n++){ const b=document.createElement("button"); b.className="btn"; b.textContent=n+"×"+n; b.dataset.n=n;
+  b.onclick=()=>{ newOverlay.classList.remove("show"); newGame(n); }; sizesEl.appendChild(b); }
 // click the backdrop (outside the card) to dismiss any overlay
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
 // a quick double tap can make mobile browsers fire a stray extra click ~25ms later; drop it so a tap never counts twice
 let lastClick=-1e9; document.addEventListener("click",e=>{ if(e.timeStamp-lastClick<50){ e.stopPropagation(); e.preventDefault(); } lastClick=e.timeStamp; },true);
-document.getElementById("newBtn").onclick=newGame;
+document.getElementById("newBtn").onclick=()=>{ sizesEl.querySelectorAll(".btn").forEach(b=>b.classList.toggle("primary",+b.dataset.n===state.N)); newOverlay.classList.add("show"); };
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
 document.getElementById("retryBtn").onclick=()=>{ document.getElementById("loseOverlay").classList.remove("show"); loadGame(state.N,state.seed); };
