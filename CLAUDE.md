@@ -20,7 +20,7 @@ Every game is built to the shared criteria below, so each is solid on its own an
 
 ## Persistence
 
-`localStorage` only, one namespaced + versioned key per game (e.g. `catoku_v1`). Store outcomes and stats (best time, solved count), never restorable game state — the puzzle must not be recoverable from storage.
+`localStorage` only, one namespaced + versioned key per game (e.g. `catoku_v1`). Store outcomes and stats (best time, solved count), never restorable game state — the puzzle must not be recoverable from storage. The landing page has its own key, `kattenspellen_v1`, holding only the install-hint opt-out (`{noInstall:true}`).
 
 ## Game modes
 
@@ -65,19 +65,19 @@ The look is shared so the games read as one family; a per-game palette makes eac
 **Family constants — never vary:**
 
 - **Font**: `"Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif`.
-- **Emoji**: Google's Noto, identical on every device — `assets/noto-emoji.woff2` is Noto Color Emoji subset to the emoji the pages use (COLRv1 for Chrome/Firefox + OT-SVG for Safari in one file), first in the font stack. Its glyphs have no plain outlines, so a device that loads it but skips both colour tables would draw blank emoji: an **emoji font check** (first section of every page's `<script>`) draws 🐱 to a canvas and, if nothing lands, sets `html.no-noto`, whose CSS rule drops Noto from the stack so the device's own emoji show. Identical in every page; keep it identical. Added an emoji? Rerun `uv run scripts/build-emoji-font.py`, or it renders as the device's native emoji. The favicons and `icon-*.png` home-screen icons are Noto too, drawn by `uv run scripts/build-icons.py` (needs Chrome; a new game or changed emoji goes in its `FAVICONS`).
+- **Emoji**: Google's Noto, identical on every device — `assets/noto-emoji.woff2` is Noto Color Emoji subset to the emoji the pages use (COLRv1 for Chrome/Firefox + OT-SVG for Safari in one file), first in the font stack. Its glyphs have no plain outlines, so a device that loads it but skips both colour tables would draw blank emoji: an **emoji font check** (first section of every page's `<script>`) draws 🐱 to a canvas and, if nothing lands, sets `html.no-noto`, whose CSS rule drops Noto from the stack so the device's own emoji show. Identical in every page; keep it identical. Added an emoji? Rerun `uv run scripts/build-emoji-font.py`, or it renders as the device's native emoji (a symbol outside its `EMOJI` class, or one Noto lacks like ☰ ⋮, stays text). The favicons and `icon-*.png` home-screen icons are Noto too, drawn by `uv run scripts/build-icons.py` (needs Chrome; a new game or changed emoji goes in its `FAVICONS`).
 - **Background**: a soft `linear-gradient(160deg, …)` from cream `#fdf6f0` to a pale tint of the game's accent. The cream start and the softness are fixed; the second stop is per-game (see below).
 - **Neutrals**: `--ink:#5b4a52` (soft mauve text, not black), `--panel:#ffffff` (cards), `--shadow:0 6px 20px rgba(120,90,110,.15)`.
 - **Shape**: generous rounding (cards ~20px, buttons/cells ~8–12px) and soft shadows.
 - **Motion**: small, springy. Hover lifts (`translateY(-2px…-4px)`), press scales down, wins pop.
-- **Component vocabulary**: pill tabs (`border-radius:999px`), rounded/pill buttons (the primary one filled with the game's accent), an `h1` + one-line subtitle header (above it, a round `.back` ← chip linking to `../index.html`), chips for clock/stats, and `.overlay` modals (rules/win/lose — a centered `.card` on the accent-tinted scrim, dismissable by clicking the backdrop). Reuse these; don't invent parallels.
+- **Component vocabulary**: pill tabs (`border-radius:999px`), rounded/pill buttons (the primary one filled with the game's accent), an `h1` header (above it, a round `.back` ← chip linking to `../index.html`), chips for clock/stats, and `.overlay` modals (rules/win/lose — a centered `.card` on the accent-tinted scrim, dismissable by clicking the backdrop). Reuse these; don't invent parallels.
 - **Loading spinner**: `loadGame` adds `#board.busy`, then generates the board on the next frame (`setupGame`) so the browser gets to draw the spinner first. The spinner is the game's emoji spinning in a white disc and fades in after 150ms, so boards that load quickly never flash it. Cached boards skip it, and a newer load cancels a pending one. The wrapper and CSS are identical in every game except the emoji; keep them identical.
 - **Landing tile**: one `a.card` per game — emoji + `<h2>` name + one-line description.
 - **Mood**: soft, playful, pastel. Cats and emoji, never harsh.
 - **Accessibility floor**: any glyph drawn on a colored region clears 3:1 contrast against every region color; region palettes keep all pairs distinct (ΔE ≥ 18) even when touching.
 - **Responsive, mobile-first**: viewport-scaled sizing, touch-friendly (`touch-action`, no tap-highlight, and `#board` sets `-webkit-user-select`/`-webkit-touch-callout: none` so a long-press never selects text on iOS), works on small screens. `--cell` budgets the whole board (body padding, board padding, gaps, clue column) against `100vw`, so even the largest size fits a 320px screen. A capture-phase `click` guard drops a stray second click within 50ms (some mobile browsers send one after a quick double tap), so a tap never counts twice; it's identical in every game.
 - **Naming**: each game's name is a cat pun.
-- **Rules card**: just the motions — the goal, the constraints, the controls, one short line each. No role-play or flavor text.
+- **Rules card**: just the motions, one short line each, in order: goal ("The puzzle is solved when …") → constraints → number clues → controls. "Tile" is the one word for a board square in all player copy. No role-play or flavor text. It auto-opens on load until the player's first win (`solved` is 0); the `Rules` button opens it any time.
 
 **Per-game identity — vary exactly these:**
 

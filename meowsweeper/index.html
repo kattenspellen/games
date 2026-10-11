@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Meowsweeper — a &quot;Minesweeper&quot;-style cat logic puzzle</title>
-<meta name="description" content="Meowsweeper is a free daily logic puzzle: clear every safe tile without waking the spooky things that scare the cats. No ads, no telemetry.">
+<meta name="description" content="A &quot;Minesweeper&quot;-style logic puzzle. Clear every safe tile so your cat doesn't get scared. Each numbered tile indicates the number of spooky things around the tile. Lay flags to mark the spooky things. No ads, no telemetry.">
 <link rel="canonical" href="https://kattenspellen.github.io/games/meowsweeper/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Meowsweeper — a &quot;Minesweeper&quot;-style cat logic puzzle">
-<meta property="og:description" content="A free daily logic puzzle with cats. Clear every safe tile and flag the spooky things. No ads, no telemetry.">
+<meta property="og:description" content="A &quot;Minesweeper&quot;-style logic puzzle. Clear every safe tile so your cat doesn't get scared. Each numbered tile indicates the number of spooky things around the tile. Lay flags to mark the spooky things. No ads, no telemetry.">
 <meta property="og:url" content="https://kattenspellen.github.io/games/meowsweeper/">
 <meta property="og:image" content="https://kattenspellen.github.io/games/assets/meowsweeper-preview.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -40,10 +40,9 @@
   }
   body { display: flex; flex-direction: column; align-items: center; padding: 16px 12px 40px; }
   h1 {
-    font-size: 2.2rem; margin: 8px 0 2px; letter-spacing: 1px;
+    font-size: 2.2rem; margin: 8px 0 12px; letter-spacing: 1px;
     font-weight: 900; color: var(--ink);
   }
-  .tag { font-size: .85rem; opacity: .7; margin-bottom: 14px; }
 
   .bar {
     display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
@@ -118,10 +117,8 @@
   }
   .btn:hover { transform: translateY(-2px); }
   .btn.primary { background: var(--accent-2); color: #fff; }
-  .btn.mode.on { background: var(--accent-2); color: #fff; }
-  .btn:disabled { opacity: .4; cursor: default; transform: none; }
+    .btn:disabled { opacity: .4; cursor: default; transform: none; }
 
-  .hint { font-size: .8rem; opacity: .65; margin-top: 12px; text-align: center; max-width: 360px; }
 
   /* Stats */
   .stats { margin-top: 26px; width: 100%; max-width: 420px; background: var(--panel);
@@ -156,7 +153,6 @@
 <body>
   <a class="back" href="../index.html" title="All games" aria-label="All games">←</a>
   <h1>Meowsweeper</h1>
-  <div class="tag" id="dateTag"></div>
 
   <div class="bar">
     <div>🚩 <span id="flagCount">0</span>/<span id="mineTotal">0</span></div>
@@ -173,19 +169,19 @@
         style="width:3em;border:none;background:#efeafa;border-radius:8px;font:inherit;font-weight:800;text-align:center;padding:4px">
     </label>
     <button class="btn primary" id="newBtn">🎲 New</button>
-    <button class="btn mode" id="flagBtn">🔨 Dig</button>
     <button class="btn" id="resetBtn">↺ Reset</button>
-    <button class="btn" id="rulesBtn">?</button>
+    <button class="btn" id="rulesBtn">Rules</button>
   </div>
-  <div class="hint">Tap the <b>🔨/🚩</b> button to switch between digging and flagging. On a desktop, right-click a tile to flag it.</div>
   <div class="stats" id="stats"></div>
 
   <div class="overlay" id="rulesOverlay">
     <div class="card">
       <h2>How to play</h2>
-      <p>Clear every safe tile without digging up a spooky thing 👻🤡👽.</p>
-      <p>Each opened tile shows how many spooky things touch it (its 8 neighbours). A <b>blank</b> tile has none, so its neighbours auto-clear.</p>
-      <p>Switch to 🚩 mode (or right-click) to flag a tile.</p>
+      <p>The puzzle is solved when every safe tile is cleared without digging up a spooky thing 👻🤡👽.</p>
+      <p>Each numbered tile indicates the number of spooky things around the tile, diagonals included.</p>
+      <p>A blank tile is not adjacent to any spooky things, so the surrounding tiles clear automatically.</p>
+      <p>Lay flags to mark and keep track of the spooky things.</p>
+      <p>Tap a tile to dig or press and hold to lay a flag.</p>
       <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
@@ -327,7 +323,7 @@ const DEFAULT_N=7, MIN_N=5, MAX_N=10; // board size is the difficulty; density f
 const SPOOKY=["🤡","👻","👽","🧟","🐍","🦠","⛈️","☄️","🎃","🧨","🛸","💉","💥","☢️"]; // the "mines" — things that scare cats
 const NUMCOL=["","#5b8dee","#3aa657","#e5484d","#8b5cf6","#b45309","#0f8a8a","#5b4a52","#8a8a8a"];
 const WINCATS=["😻","😸","😺","🐱","😹"];
-const WINPUNS=["Purrfect!","Meow-velous!","Paw-some!","Feline good!","Claw-some!","Purr-fectly played!","The cat's whiskers!","Hiss-toric win!","Totally paw-sitive!","You're kitten me!"];
+const WINPUNS=["Purrfect!","Meowvelous!","Pawsome!","Feline good!","Clawsome!","Purrfectly played!","The cat's whiskers!","Hisstoric win!","Totally pawsitive!","You're kitten me!"];
 const STORE_KEY="meowsweeper_v1";
 
 /* ---------- date ---------- */
@@ -347,8 +343,7 @@ function recordWin(N,time){
 const puzzleCache={};
 let seedCounter=0;
 const state={ N:DEFAULT_N, seed:null, puz:null, rev:null, flag:null, emoji:null,
-  started:false, elapsed:0, timerId:null, won:false, lost:false, flagMode:false,
-  pressTimer:null, suppressClick:false, challenge:null };
+  started:false, elapsed:0, timerId:null, won:false, lost:false, challenge:null };
 
 function puzzleFor(N,seed){
   if(!puzzleCache[seed]) puzzleCache[seed]=generatePuzzle(N, makeRng(seed));
@@ -391,15 +386,8 @@ function renderBoard(){
   for(let cell=0;cell<N*N;cell++){
     const el=document.createElement("div");
     el.className="cell"; el.dataset.cell=cell;
-    el.onclick=()=>onCell(cell,false);
-    el.oncontextmenu=(e)=>{ e.preventDefault(); onCell(cell,true); };
-    // long-press to flag on touch; the timer fires the flag and swallows the synthetic click
-    const clearPress=()=>{ if(state.pressTimer){ clearTimeout(state.pressTimer); state.pressTimer=null; } };
-    el.addEventListener("touchstart",()=>{ clearPress();
-      state.pressTimer=setTimeout(()=>{ state.pressTimer=null; onCell(cell,true); state.suppressClick=true; },450); },{passive:true});
-    el.addEventListener("touchend",clearPress);
-    el.addEventListener("touchmove",clearPress);
-    el.addEventListener("touchcancel",clearPress);
+    el.onclick=()=>{ if(!held) onCell(cell,false); };
+    el.oncontextmenu=e=>{ e.preventDefault(); if(!held){ held=true; endPress(); onCell(cell,true); } };
     boardEl.appendChild(el);
   }
   paint();
@@ -431,13 +419,19 @@ function updateCount(){
 }
 
 /* ---------- interaction ---------- */
+// press and hold a tile to flag it (touch or mouse); right-click flags too. The click a hold trails is dropped.
+let press=null, held=false;
+function endPress(){ if(press){ clearTimeout(press.t); press=null; } }
+boardEl.addEventListener("pointerdown",e=>{ const el=e.target.closest&&e.target.closest(".cell"); endPress(); held=false;
+  if(!el||e.button>0) return;
+  press={id:e.pointerId,x:e.clientX,y:e.clientY,t:setTimeout(()=>{ press=null; held=true; onCell(+el.dataset.cell,true); },450)}; });
+document.addEventListener("pointermove",e=>{ if(press&&e.pointerId===press.id&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>10) endPress(); });
+document.addEventListener("pointerup",endPress); document.addEventListener("pointercancel",endPress);
 function onCell(cell,flagAction){
-  if(state.suppressClick){ state.suppressClick=false; return; } // swallow click synthesized after a long-press
   if(state.won||state.lost) return;
   if(!state.started) startTimer();
-  const flagging = flagAction || state.flagMode;
   if(state.rev[cell]){ return; } // already open — nothing to do
-  if(flagging){ state.flag[cell]=!state.flag[cell]; paint(); updateCount(); return; }
+  if(flagAction){ state.flag[cell]=!state.flag[cell]; paint(); updateCount(); return; }
   if(state.flag[cell]) return; // don't dig a flagged tile
   dig(cell);
 }
@@ -544,16 +538,11 @@ function updateChallengeUI(){ const clk=document.getElementById("clock");
 const sizeInput=document.getElementById("sizeInput");
 function clampN(){ let n=Math.round(+sizeInput.value||DEFAULT_N); n=Math.max(MIN_N,Math.min(MAX_N,n)); sizeInput.value=n; return n; }
 function newGame(){ clearChallenge(); const n=clampN(); loadGame(n,"rnd|"+n+"|"+(seedCounter++)+"|"+Date.now()); }
-function setFlagMode(on){ state.flagMode=on;
-  const b=document.getElementById("flagBtn");
-  b.classList.toggle("on",on); b.textContent=on?"🚩 Flag":"🔨 Dig"; }
 // click the backdrop (outside the card) to dismiss any overlay
 document.querySelectorAll(".overlay").forEach(o=>o.addEventListener("click",e=>{ if(e.target===o) o.classList.remove("show"); }));
 // a quick double tap can make mobile browsers fire a stray extra click ~25ms later; drop it so a tap never counts twice
 let lastClick=-1e9; document.addEventListener("click",e=>{ if(e.timeStamp-lastClick<50){ e.stopPropagation(); e.preventDefault(); } lastClick=e.timeStamp; },true);
-document.getElementById("dateTag").textContent="Fresh spooky boards, any size "+MIN_N+"–"+MAX_N;
 document.getElementById("newBtn").onclick=newGame;
-document.getElementById("flagBtn").onclick=()=>setFlagMode(!state.flagMode);
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
 document.getElementById("retryBtn").onclick=()=>{ document.getElementById("loseOverlay").classList.remove("show"); loadGame(state.N,state.seed); };
@@ -563,6 +552,7 @@ const incoming=parseChallenge();
 if(incoming){ if(incoming.time!==null) state.challenge=incoming; loadGame(incoming.N,incoming.seed); showChallenge(); }
 else { loadGame(DEFAULT_N, todayStr()+"|meowsweeper"); if(location.hash.indexOf("#c=")===0) showBadLink(); } // daily default board
 renderStats();
+if(!loadStore().solved) document.getElementById("rulesOverlay").classList.add("show"); // until the first win, open the rules on load
 
 /* ---------- self-check (console) ---------- */
 function runSelfTest(){

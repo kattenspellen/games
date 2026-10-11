@@ -24,8 +24,8 @@ from fontTools.ttLib.tables.S_V_G_ import SVGDocument
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "noto-emoji.woff2"
 
-# Not ✓ ✕ → ⇒: those stay text.
-EMOJI = re.compile(r"[\U0001F000-\U0001FAFF☀-⛿✅❌⭐⭕]")
+# Not ✓ ✕ → ⇒ ☰ ⋮: those stay text (☰ ⋮ aren't in Noto).
+EMOJI = re.compile(r"[\U0001F000-\U0001FAFF☀-☯☱-⛿✅❌⭐⭕⬆]")
 
 USER_AGENTS = {
     "colrv1": (
