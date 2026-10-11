@@ -55,37 +55,75 @@
   a.card.purrlink h2 { color: #6b3fa0; }
   a.card.kattenratten h2 { color: #4b4f9e; }
   a.card p { margin: 0; font-size: .95rem; opacity: .75; }
+  /* phones: 2-up cards (the odd last one centers); under 360px they stay 1-up */
+  @media (min-width:360px) and (max-width:519px) {
+    .games { gap: 12px; }
+    a.card { width: calc(50% - 6px); padding: 14px; }
+    a.card h2 { font-size: 1.1rem; }
+  }
+  .btn {
+    border: none; cursor: pointer; font-family: inherit; font-weight: 800; font-size: .9rem;
+    padding: 9px 16px; border-radius: 12px; background: var(--panel); color: var(--ink);
+    box-shadow: var(--shadow); transition: transform .12s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.primary { background: var(--accent-2); color: #fff; }
+  .btn[hidden] { display: none; }
+  #installBtn { margin: -16px 0 28px; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(70,50,65,.4);
+    display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .overlay .card {
+    background: var(--panel); border-radius: 20px; padding: 26px; max-width: 360px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.25); text-align: center; animation: pop .3s ease;
+  }
+  .overlay .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+  @keyframes pop { 0%{transform:scale(.2) rotate(-18deg);opacity:0;} 60%{transform:scale(1.18) rotate(6deg);} 100%{transform:scale(1) rotate(0);} }
 </style>
 </head>
 <body>
   <h1>Kattenspellen</h1>
   <p class="sub">Cat puzzle games.</p>
+  <button class="btn primary" id="installBtn" hidden>📲 Install as an app</button>
   <div class="games">
     <a class="card" href="catoku/">
       <div class="emoji">🐱</div>
       <h2>Catoku</h2>
-      <p>A "Queens"-style logic puzzle with cats. One cat per row, column, and color region.</p>
+      <p>A "Queens"-style logic puzzle.</p>
     </a>
     <a class="card catwalk" href="catwalk/">
       <div class="emoji">🐾</div>
       <h2>Catwalk</h2>
-      <p>A "Train Tracks"-style logic puzzle. Lay one connected paw trail to match the row and column counts.</p>
+      <p>A "Train Tracks"-style logic puzzle.</p>
     </a>
     <a class="card meowsweeper" href="meowsweeper/">
       <div class="emoji">🙀</div>
       <h2>Meowsweeper</h2>
-      <p>A "Minesweeper"-style logic puzzle. Clear every safe tile and flag the spooky things.</p>
+      <p>A "Minesweeper"-style logic puzzle.</p>
     </a>
     <a class="card purrlink" href="purrlink/">
       <div class="emoji">🧶</div>
       <h2>Purrlink</h2>
-      <p>A "Numberlink"-style logic puzzle. Connect each cat to its ball of yarn — no crossings, fill every square.</p>
+      <p>A "Numberlink"-style logic puzzle.</p>
     </a>
     <a class="card kattenratten" href="kattenratten/">
       <div class="emoji">🐭</div>
       <h2>Kattenratten</h2>
-      <p>A "Tents"-style logic puzzle. Every rat gets its own cat — cats never touch, and each row and column has its count.</p>
+      <p>A "Tents"-style logic puzzle.</p>
     </a>
+  </div>
+
+  <div class="overlay" id="installOverlay">
+    <div class="card">
+      <p id="installSteps"></p>
+      <div class="winbtns">
+        <button class="btn" id="noInstallBtn">Don't show again</button>
+        <button class="btn primary" onclick="document.getElementById('installOverlay').classList.remove('show')">Got it!</button>
+      </div>
+    </div>
   </div>
 <script>
 "use strict";
@@ -99,6 +137,38 @@ if (typeof document !== "undefined" && document.fonts) document.fonts.load('40px
   for (let i = 3; i < d.length; i += 4) if (d[i] > 128) n++;
   if (n < 50) document.documentElement.classList.add("no-noto");
 }).catch(() => {});
+
+/* ---------- install as an app ---------- */
+// Chrome on Android installs through its own prompt; other phone browsers get the steps in a card.
+// Hidden inside the installed app, on desktop, and once the player picks "Don't show again".
+const STORE_KEY = "kattenspellen_v1"; // { noInstall: true } once dismissed
+function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; } }
+const installBtn = document.getElementById("installBtn"), installOverlay = document.getElementById("installOverlay");
+let installPrompt = null;
+if (!(matchMedia("(display-mode: standalone)").matches || navigator.standalone) && !loadStore().noInstall) {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const steps = ios ? (/CriOS/.test(ua) ? "Tap Share ⬆️ in the address bar, then Add to Home Screen."
+      : /FxiOS/.test(ua) ? "Tap the menu ☰, then Share, then Add to Home Screen."
+      : /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|DuckDuckGo|GSA/.test(ua) ? "Tap Share ⬆️, then Add to Home Screen." : "")
+    : /Android/.test(ua) && /Firefox/.test(ua) ? "Tap the menu ⋮, then Add to Home screen." : "";
+  if (steps) { document.getElementById("installSteps").textContent = steps; installBtn.hidden = false; }
+  if (/Android/.test(ua)) { // desktop Chrome fires these too; keep the button to phones
+    addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; installBtn.hidden = false; });
+    addEventListener("appinstalled", () => { installBtn.hidden = true; });
+  }
+}
+installBtn.onclick = () => {
+  if (installPrompt) { installPrompt.prompt(); installPrompt = null; installBtn.hidden = true; } // a prompt is single-use; Chrome re-fires the event if still installable
+  else installOverlay.classList.add("show");
+};
+document.getElementById("noInstallBtn").onclick = () => {
+  const s = loadStore(); s.noInstall = true;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {}
+  installBtn.hidden = true; installOverlay.classList.remove("show");
+};
+// click the backdrop (outside the card) to dismiss
+installOverlay.addEventListener("click", e => { if (e.target === installOverlay) installOverlay.classList.remove("show"); });
 </script>
 </body>
 </html>
