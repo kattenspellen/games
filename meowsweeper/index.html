@@ -146,6 +146,7 @@
   }
   .card h2 { margin: 6px 0 10px; }
   .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  #demoImg { display: block; width: 100%; height: auto; border-radius: 12px; margin-bottom: 12px; }
   .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
     animation: fall linear forwards; }
   @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
@@ -179,7 +180,17 @@
       <p>A blank tile is not adjacent to any spooky things, so the surrounding tiles clear automatically.</p>
       <p>Lay flags to mark and keep track of the spooky things.</p>
       <p>Tap a tile to dig or press and hold to lay a flag.</p>
-      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      <div class="winbtns">
+        <button class="btn" id="demoBtn">Watch demo</button>
+        <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="demoOverlay">
+    <div class="card">
+      <img id="demoImg" data-src="../assets/meowsweeper-demo.gif" alt="Meowsweeper demo" width="700" height="700">
+      <button class="btn primary" onclick="document.getElementById('demoOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
 
@@ -263,8 +274,9 @@ function nbrs(N,cell){ const r=(cell/N)|0, c=cell%N, out=[];
 // Two rule families: (1) count — a revealed number whose remaining mines equal
 // its unknown neighbours flags them, or whose remaining is 0 clears them; and
 // (2) subset (the 1-2 rule) — if one clue's unknowns are a subset of another's,
-// the difference set is forced all-mine or all-safe.
-function solve(N,mines,start){
+// the difference set is forced all-mine or all-safe. log(kind, cell, why), if given, records
+// each committed move in order: "dig"/"flag" with the clue tiles that forced it ({clue:[cell]} or the pair).
+function solve(N,mines,start,log){
   const cells=N*N, num=Array(cells).fill(0);
   for(let c=0;c<cells;c++){ if(mines.has(c)) continue; let n=0;
     for(const nb of nbrs(N,c)) if(mines.has(nb)) n++; num[c]=n; }
@@ -275,7 +287,9 @@ function solve(N,mines,start){
   floodReveal(start); // start's 3×3 is mine-free, so num[start]===0 and the flood only walks safe cells
   function clueUnknowns(cell){ let mineN=0; const unk=[];
     for(const nb of nbrs(N,cell)){ if(known[nb]===2) mineN++; else if(known[nb]===0) unk.push(nb); }
-    return {unk, rem:num[cell]-mineN}; }
+    return {cell, unk, rem:num[cell]-mineN}; }
+  const reveal=(x,why)=>{ if(known[x]!==0) return; if(log) log("dig",x,why); floodReveal(x); };
+  const flag=(x,why)=>{ known[x]=2; if(log) log("flag",x,why); };
   function subsetPass(){
     const cons=[];
     for(let cell=0;cell<cells;cell++){ if(known[cell]!==1||num[cell]===0) continue;
@@ -287,8 +301,8 @@ function solve(N,mines,start){
       const aset=new Set(A.unk);
       if(!A.unk.every(x=>B.unk.includes(x))) continue;
       const diff=B.unk.filter(x=>!aset.has(x)), need=B.rem-A.rem;
-      if(need===0){ for(const x of diff) if(known[x]===0){ floodReveal(x); ch=true; } }
-      else if(need===diff.length){ for(const x of diff) if(known[x]===0){ known[x]=2; ch=true; } } }
+      if(need===0){ for(const x of diff) if(known[x]===0){ reveal(x,{clue:[A.cell,B.cell]}); ch=true; } }
+      else if(need===diff.length){ for(const x of diff) if(known[x]===0){ flag(x,{clue:[A.cell,B.cell]}); ch=true; } } }
     return ch;
   }
   let changed=true;
@@ -297,8 +311,8 @@ function solve(N,mines,start){
     for(let cell=0;cell<cells;cell++){
       if(known[cell]!==1||num[cell]===0) continue;
       const {unk,rem}=clueUnknowns(cell); if(!unk.length) continue;
-      if(rem===0){ for(const x of unk){ floodReveal(x); changed=true; } }
-      else if(rem===unk.length){ for(const x of unk){ known[x]=2; } changed=true; } }
+      if(rem===0){ for(const x of unk){ reveal(x,{clue:[cell]}); changed=true; } }
+      else if(rem===unk.length){ for(const x of unk) flag(x,{clue:[cell]}); changed=true; } }
     if(!changed) changed=subsetPass();
   }
   let complete=true;
@@ -570,6 +584,9 @@ let lastClick=-1e9; document.addEventListener("click",e=>{ if(e.timeStamp-lastCl
 document.getElementById("newBtn").onclick=()=>{ sizesEl.querySelectorAll(".btn").forEach(b=>b.classList.toggle("primary",+b.dataset.n===state.N)); newOverlay.classList.add("show"); };
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+// Watch demo swaps the rules card for the demo GIF, fetched on first open.
+document.getElementById("demoBtn").onclick=()=>{ const i=document.getElementById("demoImg"); if(!i.src) i.src=i.dataset.src;
+  document.getElementById("rulesOverlay").classList.remove("show"); document.getElementById("demoOverlay").classList.add("show"); };
 document.getElementById("retryBtn").onclick=()=>{ document.getElementById("loseOverlay").classList.remove("show"); loadGame(state.N,state.seed); };
 document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
 document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };

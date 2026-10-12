@@ -176,6 +176,7 @@
   }
   .card h2 { margin: 6px 0 10px; }
   .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  #demoImg { display: block; width: 100%; height: auto; border-radius: 12px; margin-bottom: 12px; }
   .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
     animation: fall linear forwards; }
   @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
@@ -211,7 +212,17 @@
       <p>Press and hold a tile where you want to place a trail, then drag to select a trail tile, and let go to place it.</p>
       <p>Or tap a tile once for an ✕, then keep tapping to cycle through the six trail tiles, and once more to clear the tile.</p>
       <p>Tap a number button on the edge of the board to add an ✕ to each empty tile in that row or column.</p>
-      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      <div class="winbtns">
+        <button class="btn" id="demoBtn">Watch demo</button>
+        <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="demoOverlay">
+    <div class="card">
+      <img id="demoImg" data-src="../assets/catwalk-demo.gif" alt="Catwalk demo" width="700" height="700">
+      <button class="btn primary" onclick="document.getElementById('demoOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
 
@@ -337,7 +348,9 @@ function pathData(N,pp){
 // Rules: (1) degree — a paw needs exactly 2 links, so force/forbid edges once a
 // cell's on/possible counts pin it; (2) counts — a row/col whose known paws meet
 // its clue empties the rest, and one whose paws+unknowns equal its clue fills them.
-function solve(N,rowCounts,colCounts,entry,exit){
+// log(kind, at, why), if given, records each committed deduction: "on" with the edge key and the
+// {cell} whose degree forced it; "x" with the cell and its cause ({row}/{col} count, or {cell} degree).
+function solve(N,rowCounts,colCounts,entry,exit,log){
   const cells=N*N, id=(r,c)=>r*N+c;
   const inc=Array.from({length:cells},()=>[]);
   const state=new Map();
@@ -349,9 +362,10 @@ function solve(N,rowCounts,colCounts,entry,exit){
   const eCell=id(entry.r,entry.c), xCell=id(exit.r,exit.c);
   state.set("s"+eCell,1); inc[eCell].push("s"+eCell);
   state.set("s"+xCell,1); inc[xCell].push("s"+xCell);
-  const forcedTrack=new Set(), forcedEmpty=new Set();
+  const forcedTrack=new Set(), forcedEmpty=new Set(), logged=new Set();
   let changed=true, dead=false;
-  function setEdge(k,v){ const cur=state.get(k); if(cur===0){ state.set(k,v); changed=true; } else if(cur!==v) dead=true; }
+  function setEdge(k,v,cell){ const cur=state.get(k); if(cur===0){ state.set(k,v); changed=true; if(log&&v>0) log("on",k,{cell}); } else if(cur!==v) dead=true; }
+  const logX=(cell,why)=>{ if(log&&!logged.has(cell)){ logged.add(cell); log("x",cell,why); } };
   function status(cell){
     let on=0,unk=0; for(const k of inc[cell]){ const v=state.get(k); if(v===1)on++; else if(v===0)unk++; }
     if(forcedEmpty.has(cell)) return "e";
@@ -359,10 +373,10 @@ function solve(N,rowCounts,colCounts,entry,exit){
     if(on+unk<2) return "e";
     return "u";
   }
-  function lineRule(ids,clue){
+  function lineRule(ids,clue,why){
     let t=0,u=0; for(const cell of ids){ const s=status(cell); if(s==="t")t++; else if(s==="u")u++; }
     if(t>clue || t+u<clue) return false;
-    if(t===clue){ for(const cell of ids) if(status(cell)==="u" && !forcedEmpty.has(cell)){ forcedEmpty.add(cell); changed=true; } }
+    if(t===clue){ for(const cell of ids) if(status(cell)==="u" && !forcedEmpty.has(cell)){ forcedEmpty.add(cell); logX(cell,why); changed=true; } }
     else if(t+u===clue){ for(const cell of ids) if(status(cell)==="u" && !forcedTrack.has(cell)){ forcedTrack.add(cell); changed=true; } }
     return true;
   }
@@ -377,12 +391,12 @@ function solve(N,rowCounts,colCounts,entry,exit){
       if(isTrack){
         if(on>2){ dead=true; break; }
         if(on===2){ for(const k of unk) setEdge(k,-1); }
-        else { const need=2-on; if(unk.length<need){ dead=true; break; } if(unk.length===need) for(const k of unk) setEdge(k,1); }
-      } else if(isEmpty){ for(const k of unk) setEdge(k,-1); }
+        else { const need=2-on; if(unk.length<need){ dead=true; break; } if(unk.length===need) for(const k of unk) setEdge(k,1,cell); }
+      } else if(isEmpty){ logX(cell,{cell}); for(const k of unk) setEdge(k,-1); }
     }
     if(dead) break;
-    for(let r=0;r<N && !dead;r++){ const ids=[]; for(let c=0;c<N;c++) ids.push(id(r,c)); if(!lineRule(ids,rowCounts[r])) dead=true; }
-    for(let c=0;c<N && !dead;c++){ const ids=[]; for(let r=0;r<N;r++) ids.push(id(r,c)); if(!lineRule(ids,colCounts[c])) dead=true; }
+    for(let r=0;r<N && !dead;r++){ const ids=[]; for(let c=0;c<N;c++) ids.push(id(r,c)); if(!lineRule(ids,rowCounts[r],{row:r})) dead=true; }
+    for(let c=0;c<N && !dead;c++){ const ids=[]; for(let r=0;r<N;r++) ids.push(id(r,c)); if(!lineRule(ids,colCounts[c],{col:c})) dead=true; }
   }
   let complete=true; const tracks=new Set();
   for(const v of state.values()) if(v===0) complete=false;
@@ -704,6 +718,9 @@ document.getElementById("undoBtn").onclick=undo;
 document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+// Watch demo swaps the rules card for the demo GIF, fetched on first open.
+document.getElementById("demoBtn").onclick=()=>{ const i=document.getElementById("demoImg"); if(!i.src) i.src=i.dataset.src;
+  document.getElementById("rulesOverlay").classList.remove("show"); document.getElementById("demoOverlay").classList.add("show"); };
 document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
 document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
 const incoming=parseChallenge();

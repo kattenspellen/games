@@ -146,6 +146,7 @@
   }
   .card h2 { margin: 6px 0 10px; }
   .card p { line-height: 1.5; font-size: .92rem; margin: 8px 0; text-align: left; }
+  #demoImg { display: block; width: 100%; height: auto; border-radius: 12px; margin-bottom: 12px; }
   .confetti { position: fixed; top: -40px; font-size: 28px; z-index: 60; pointer-events: none;
     animation: fall linear forwards; }
   @keyframes fall { to { transform: translateY(105vh) rotate(360deg); opacity: .9; } }
@@ -179,7 +180,17 @@
       <p>The connections cannot branch or cross.</p>
       <p>Drag from a cat to its ball of yarn, or from the ball of yarn to the cat. Drag back to shorten a connection.</p>
       <p>Tap a cat or ball of yarn to clear the connection. Drawing through another connection cuts that connection.</p>
-      <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      <div class="winbtns">
+        <button class="btn" id="demoBtn">Watch demo</button>
+        <button class="btn primary" onclick="document.getElementById('rulesOverlay').classList.remove('show')">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="demoOverlay">
+    <div class="card">
+      <img id="demoImg" data-src="../assets/purrlink-demo.gif" alt="Purrlink demo" width="700" height="700">
+      <button class="btn primary" onclick="document.getElementById('demoOverlay').classList.remove('show')">Got it!</button>
     </div>
   </div>
 
@@ -285,7 +296,8 @@ function topoOf(N){ if(topo[N]) return topo[N];
 // colour in common can't link; (3) no loops — never link two cells already joined;
 // (4) reach — colour c survives in a cell only if c's cat can reach it and it has ≥2
 // c-capable open sides (a strand passes through). Returns {dead, complete, es, cs, ea, eb}.
-function propagate(N,ends,es0,cs0){
+// log(kind, at, why), if given, records each link committed: "on", [a,b], {cell:i} (the degree rule at i).
+function propagate(N,ends,es0,cs0,log){
   const n=N*N, K=ends.length, {ea,eb,inc}=topoOf(N), E=ea.length;
   const es=es0?Int8Array.from(es0):new Int8Array(E), need=new Int8Array(n).fill(2), cs=cs0?Int32Array.from(cs0):new Int32Array(n).fill((1<<K)-1), isEp=new Uint8Array(n);
   ends.forEach(([a,b],c)=>{ for(const x of [a,b]){ need[x]=1; cs[x]=1<<c; isEp[x]=1; } });
@@ -299,7 +311,7 @@ function propagate(N,ends,es0,cs0){
     for(let i=0;i<n&&!dead;i++){ let on=0,un=0; // (1) degree
       for(const e of inc[i]){ if(es[e]===1) on++; else if(es[e]===0) un++; }
       if(on>need[i]||on+un<need[i]){ dead=true; break; }
-      if(un&&(on===need[i]||on+un===need[i])){ const v=on===need[i]?-1:1; for(const e of inc[i]) if(es[e]===0) set(e,v); } }
+      if(un&&(on===need[i]||on+un===need[i])){ const v=on===need[i]?-1:1; for(const e of inc[i]) if(es[e]===0){ if(log&&v>0) log("on",[ea[e],eb[e]],{cell:i}); set(e,v); } } }
     for(let e=0;e<E&&!dead;e++){ const a=ea[e],b=eb[e], m=cs[a]&cs[b]; // (2) colour
       if(es[e]===0&&!m) set(e,-1);
       else if(es[e]===1){ if(!m){ dead=true; break; } if(cs[a]!==m||cs[b]!==m){ cs[a]=cs[b]=m; changed=true; } } }
@@ -321,13 +333,14 @@ function propagate(N,ends,es0,cs0){
 // human-style deductive solver: the direct rules, plus proof by contradiction when they stall —
 // assume an open edge is on (or off), apply the direct rules; if that breaks the board, the
 // opposite is proven. One level only: the assumption plays out with direct rules, never
-// another assumption. Returns propagate's result + steps (contradictions used).
-function solve(N,ends){
-  let s=propagate(N,ends), steps=0;
+// another assumption. Returns propagate's result + steps (contradictions used). log: see
+// propagate; a link proven by contradiction logs with {contra:true}.
+function solve(N,ends,log){
+  let s=propagate(N,ends,null,null,log), steps=0;
   for(let hit=true;hit&&!s.dead&&!s.complete;){ hit=false;
     for(let e=0;e<s.es.length&&!s.dead&&!s.complete;e++) if(s.es[e]===0) for(const v of [1,-1]){
       const t=Int8Array.from(s.es); t[e]=v;
-      if(propagate(N,ends,t,s.cs).dead){ t[e]=-v; s=propagate(N,ends,t,s.cs); steps++; hit=true; break; } }
+      if(propagate(N,ends,t,s.cs).dead){ t[e]=-v; if(log&&v<0) log("on",[s.ea[e],s.eb[e]],{contra:true}); s=propagate(N,ends,t,s.cs,log); steps++; hit=true; break; } }
   }
   s.steps=steps; return s;
 }
@@ -618,6 +631,9 @@ document.getElementById("undoBtn").onclick=undo;
 document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey)&&e.key==="z"){ e.preventDefault(); undo(); } });
 document.getElementById("resetBtn").onclick=()=>{ if(!state.won||confirm("Reset board?")) loadGame(state.N,state.seed); };
 document.getElementById("rulesBtn").onclick=()=>document.getElementById("rulesOverlay").classList.add("show");
+// Watch demo swaps the rules card for the demo GIF, fetched on first open.
+document.getElementById("demoBtn").onclick=()=>{ const i=document.getElementById("demoImg"); if(!i.src) i.src=i.dataset.src;
+  document.getElementById("rulesOverlay").classList.remove("show"); document.getElementById("demoOverlay").classList.add("show"); };
 document.getElementById("shareBtn").onclick=function(){ copyChallenge(this); };
 document.getElementById("shareChip").onclick=function(){ copyChallenge(this,"✓","🔗"); };
 const incoming=parseChallenge();
