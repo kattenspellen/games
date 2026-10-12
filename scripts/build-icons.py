@@ -2,11 +2,11 @@
 # requires-python = ">=3.9"
 # dependencies = ["pillow"]
 # ///
-"""Rebuild every page's favicon.png and the icon-*.png home-screen icons from assets/noto-emoji.woff2.
+"""Rebuild every page's favicon.png and the icon-*.png home-screen icons from the Noto art in assets/emoji/.
 
-Run after changing a page's emoji (and after build-emoji-font.py):  uv run scripts/build-icons.py
+Run after changing a page's emoji (and after build-emoji.py):  uv run scripts/build-icons.py
 
-Chrome draws the glyphs (Pillow can't render the COLRv1 colour emoji). Set CHROME if it isn't found.
+Chrome draws the SVGs (Pillow can't render SVG). Set CHROME if it isn't found.
 """
 
 import base64
@@ -31,12 +31,12 @@ CHROME = os.environ.get("CHROME") or next(
 
 
 def render(emoji, tmp):
-    """The emoji as Chrome draws it with the pages' font, cropped to its ink."""
-    font = base64.b64encode((ROOT / "assets" / "noto-emoji.woff2").read_bytes()).decode()
+    """The emoji's Noto art as Chrome draws it, cropped to its ink."""
+    svg = base64.b64encode((ROOT / "assets" / "emoji" / f"{ord(emoji):x}.svg").read_bytes()).decode()
     page, shot = tmp / "e.html", tmp / "e.png"
     page.write_text(
-        f"<!doctype html><style>@font-face{{font-family:N;src:url(data:font/woff2;base64,{font})}}"
-        f"body{{margin:0}}div{{font:800px/1 N;padding:100px}}</style><div>{emoji}</div>",
+        f"<!doctype html><style>body{{margin:0}}img{{width:900px;height:900px;margin:100px}}</style>"
+        f"<img src='data:image/svg+xml;base64,{svg}'>",
         encoding="utf8",
     )
     subprocess.run(

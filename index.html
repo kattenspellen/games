@@ -27,15 +27,15 @@
     --accent-2: #3f8fd6;
     --shadow: 0 6px 20px rgba(120,90,110,.15);
   }
-  /* Google's Noto emoji, subset to the ones we use, so cats look the same on every device */
-  @font-face { font-family: "Noto Color Emoji"; src: url("assets/noto-emoji.woff2") format("woff2"); }
-  html.no-noto, html.no-noto body { font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif; } /* set by the emoji check */
+  /* emoji draw as Google's Noto art (see "emoji images" in the script); each SVG frames the font's line box,
+     so this sizes and shifts it to sit where the glyph would */
+  img.emo { width: 1.172em; height: 1.172em; margin: -.086em .037em; vertical-align: -.158em; pointer-events: none; -webkit-user-drag: none; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
     background: linear-gradient(160deg,#fdf6f0,#f5eefb);
     color: var(--ink);
-    font-family: "Noto Color Emoji","Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+    font-family: "Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
     min-height: 100%;
   }
   body { display: flex; flex-direction: column; align-items: center; padding: 40px 12px; }
@@ -128,15 +128,34 @@
 <script>
 "use strict";
 
-/* ---------- emoji font check ---------- */
-// Some phones load the Noto font yet draw its emoji blank; drop it there so the device's own emoji show.
-if (typeof document !== "undefined" && document.fonts) document.fonts.load('40px "Noto Color Emoji"', "🐱").then(() => {
-  const c = document.createElement("canvas"); c.width = c.height = 48;
-  const x = c.getContext("2d"); x.font = '40px "Noto Color Emoji"'; x.textBaseline = "top"; x.fillText("🐱", 4, 4);
-  const d = x.getImageData(0, 0, 48, 48).data; let n = 0;
-  for (let i = 3; i < d.length; i += 4) if (d[i] > 128) n++;
-  if (n < 50) document.documentElement.classList.add("no-noto");
-}).catch(() => {});
+/* ---------- emoji images ---------- */
+// Every emoji draws as Google's Noto art from assets/emoji/ (built by scripts/build-emoji.py), so it looks the same on every
+// device with no font support needed. The page's text keeps plain emoji; this swaps each for an <img>, at load and whenever
+// the page adds more. An image that can't load shows its alt: the device's own emoji.
+const EMOJI_DIR = "assets/emoji/";
+const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u2600-\u262F\u2631-\u26FF\u2705\u274C\u2B50\u2B55\u2B06]\uFE0F?/gu; // same set as build-emoji.py
+function emojify(root) {
+  if (!root || !root.isConnected) return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), hits = [];
+  for (let n; (n = w.nextNode());) if (n.data.search(EMOJI_RE) >= 0 && !n.parentNode.closest("script,style")) hits.push(n);
+  for (const n of hits) {
+    const f = document.createDocumentFragment(); let i = 0;
+    for (const m of n.data.matchAll(EMOJI_RE)) {
+      if (m.index > i) f.append(n.data.slice(i, m.index));
+      const img = document.createElement("img"); img.className = "emo"; img.alt = m[0]; img.draggable = false;
+      img.src = EMOJI_DIR + m[0].codePointAt(0).toString(16) + ".svg"; f.append(img); i = m.index + m[0].length;
+    }
+    if (i < n.data.length) f.append(n.data.slice(i));
+    n.replaceWith(f);
+  }
+}
+if (typeof document !== "undefined" && typeof MutationObserver !== "undefined") {
+  emojify(document.body);
+  new MutationObserver(ms => { for (const m of ms) for (const n of m.type === "characterData" ? [m.target] : m.addedNodes) emojify(n.nodeType === 3 ? n.parentNode : n); })
+    .observe(document.body, { childList: true, subtree: true, characterData: true });
+  // Once the page has loaded, fetch every emoji it can show (in its HTML or script) so one that appears mid-game draws at once.
+  addEventListener("load", () => { for (const e of new Set(document.documentElement.innerHTML.match(EMOJI_RE))) new Image().src = EMOJI_DIR + e.codePointAt(0).toString(16) + ".svg"; });
+}
 
 /* ---------- install as an app ---------- */
 // Chrome on Android installs through its own prompt; other phone browsers get the steps in a card.
